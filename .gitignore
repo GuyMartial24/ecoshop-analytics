@@ -1,0 +1,26 @@
+
+# Python / uv
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+.dlt/secrets.toml
+
+# dbt (artefacts générés)
+dbt_project/target/
+dbt_project/dbt_packages/
+dbt_project/logs/
+logs/
+
+# dlt (état local des pipelines)
+.dlt/.var/
+
+# Données téléchargées (DVF)
+data/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
