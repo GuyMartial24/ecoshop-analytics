@@ -1,0 +1,6 @@
+[project]
+name = "ecoshop-analytics"
+version = "0.1.0"
+description = "Plateforme analytique e-commerce et immobilière (DVF) avec dlt, dbt et Lightdash"
+requires-python = ">=3.12"
+dependencies = []
