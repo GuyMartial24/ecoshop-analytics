@@ -1,0 +1,105 @@
+name: ecoshop
+
+services:
+
+  # Entrepôt de données : schémas raw (dlt), staging, snapshots, marts (dbt)
+  warehouse:
+    image: postgres:16
+    container_name: ecoshop-warehouse
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${WAREHOUSE_USER}
+      POSTGRES_PASSWORD: ${WAREHOUSE_PASSWORD}
+      POSTGRES_DB: ${WAREHOUSE_DB}
+    ports:
+      - "${WAREHOUSE_PORT}:5432"
+    volumes:
+      - warehouse_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WAREHOUSE_USER} -d ${WAREHOUSE_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Base de métadonnées interne de Lightdash (non exposée hors du réseau Docker)
+  lightdash-db:
+    image: postgres:16
+    container_name: ecoshop-lightdash-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${LIGHTDASH_DB_USER}
+      POSTGRES_PASSWORD: ${LIGHTDASH_DB_PASSWORD}
+      POSTGRES_DB: ${LIGHTDASH_DB_NAME}
+    volumes:
+      - lightdash_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LIGHTDASH_DB_USER} -d ${LIGHTDASH_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Stockage objet compatible S3, exigé par Lightdash (résultats de requêtes, exports)
+  # Local uniquement : pas d'authentification, donc AUCUN port exposé hors du réseau Docker
+  s3:
+    image: chrislusf/seaweedfs:4.00
+    container_name: ecoshop-s3
+    restart: unless-stopped
+    command: "server -s3 -dir=/data"
+    volumes:
+      - s3_data:/data
+
+  # Tâche ponctuelle : crée le bucket Lightdash puis s'arrête (code 0)
+  s3-init:
+    image: amazon/aws-cli:2.27.0
+    container_name: ecoshop-s3-init
+    depends_on:
+      - s3
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY}
+      AWS_DEFAULT_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until aws --endpoint-url http://s3:8333 s3api head-bucket --bucket "$$S3_BUCKET" 2>/dev/null \
+           || aws --endpoint-url http://s3:8333 s3 mb "s3://$$S3_BUCKET"; do
+          echo "En attente du stockage S3..."; sleep 2
+        done
+        echo "Bucket $$S3_BUCKET prêt."
+
+  # Outil de BI : lit les modèles Gold (marts) produits par dbt
+  lightdash:
+    image: lightdash/lightdash:latest  # TODO : figer la version avant le déploiement sur le VPS
+    container_name: ecoshop-lightdash
+    restart: unless-stopped
+    depends_on:
+      lightdash-db:
+        condition: service_healthy
+      s3-init:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: lightdash-db  # nom du service Docker (résolu sur le réseau interne)
+      PGPORT: 5432
+      PGUSER: ${LIGHTDASH_DB_USER}
+      PGPASSWORD: ${LIGHTDASH_DB_PASSWORD}
+      PGDATABASE: ${LIGHTDASH_DB_NAME}
+      LIGHTDASH_SECRET: ${LIGHTDASH_SECRET}
+      SITE_URL: ${SITE_URL}
+      PORT: 8080
+      SECURE_COOKIES: "false"  # à passer à "true" en production derrière HTTPS
+      TRUST_PROXY: "false"
+      # Stockage S3 (SeaweedFS en local, un vrai S3 en production)
+      S3_ENDPOINT: http://s3:8333
+      S3_BUCKET: ${S3_BUCKET}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_FORCE_PATH_STYLE: "true"
+    ports:
+      - "${LIGHTDASH_PORT}:8080"
+
+volumes:
+  warehouse_data:
+  lightdash_data:
+  s3_data:
