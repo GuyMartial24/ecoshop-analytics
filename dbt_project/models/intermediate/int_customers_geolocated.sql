@@ -1,11 +1,5 @@
--- Clients rattachés à leur commune officielle (1 ligne = 1 client)
---
--- Le back-office ne connaît que le code postal et la ville. Un code postal pouvant
--- correspondre à plusieurs communes (ex. 75011 = Paris et Paris 11e Arrondissement),
--- on retient la meilleure candidate, dans cet ordre de priorité :
---   1. le nom de la commune commence par la ville saisie ;
---   2. l'arrondissement plutôt que la commune entière (plus précis, cohérent avec DVF) ;
---   3. la commune la plus peuplée.
+-- Clients (état courant) rattachés à leur commune officielle (1 ligne = 1 client)
+-- La règle de rattachement est centralisée dans int_postal_city_communes.
 
 with customers as (
 
@@ -13,42 +7,17 @@ with customers as (
 
 ),
 
-candidates as (
+communes as (
 
-    select * from {{ ref('int_postal_code_communes') }}
-
-),
-
-ranked as (
-
-    select
-        customers.customer_id,
-        candidates.commune_code,
-        row_number() over (
-            partition by customers.customer_id
-            order by
-                (candidates.commune_name ilike customers.city || '%') desc,
-                candidates.is_municipal_district desc,
-                candidates.population desc nulls last
-        ) as match_rank
-
-    from customers
-    left join candidates
-        on customers.postal_code = candidates.postal_code
-
-),
-
-final as (
-
-    select
-        customers.*,
-        ranked.commune_code
-
-    from customers
-    inner join ranked
-        on customers.customer_id = ranked.customer_id
-        and ranked.match_rank = 1
+    select * from {{ ref('int_postal_city_communes') }}
 
 )
 
-select * from final
+select
+    customers.*,
+    communes.commune_code
+
+from customers
+left join communes
+    on customers.postal_code = communes.postal_code
+    and customers.city = communes.city

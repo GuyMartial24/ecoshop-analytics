@@ -50,10 +50,38 @@ models:
                 to: ref('dim_communes')
                 field: commune_code
 
+  - name: dim_customers_history
+    description: >
+      Dimension client historisée (SCD de type 2), construite sur le snapshot
+      snap_customers : une ligne par version d'un client, valide sur [valid_from, valid_to[.
+      La version courante a valid_to = 9999-12-31.
+    columns:
+      - name: customer_version_id
+        description: Clé de substitution de la version (customer_id + valid_from).
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_id
+      - name: commune_code
+        description: Commune du client pendant la période de validité de la version.
+        data_tests:
+          - not_null
+      - name: is_current
+        description: Vrai pour la version en vigueur aujourd'hui (une seule par client).
+
   # ------------------------------------------------------------------- Faits
 
   - name: fct_orders
-    description: Commandes avec montants (TTC, HT), coût et marge. Une ligne par commande.
+    description: >
+      Commandes avec montants (TTC, HT), coût et marge. Une ligne par commande.
+      Matérialisation incrémentale (merge sur order_id). Le segment et la commune sont
+      ceux du client à la date de la commande (jointure temporelle sur dim_customers_history).
     config:
       contract:
         enforced: true
@@ -76,8 +104,22 @@ models:
               arguments:
                 to: ref('dim_customers')
                 field: customer_id
+      - name: customer_version_id
+        data_type: text
+        description: Version du client en vigueur à la date de la commande.
+        constraints:
+          - type: not_null
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_customers_history')
+                field: customer_version_id
+      - name: customer_segment_at_order
+        data_type: varchar
+        description: Segment du client au moment de la commande.
       - name: commune_code
         data_type: varchar
+        description: Commune du client au moment de la commande.
         data_tests:
           - relationships:
               arguments:

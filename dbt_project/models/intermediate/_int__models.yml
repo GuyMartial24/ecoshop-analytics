@@ -41,8 +41,21 @@ models:
   - name: int_postal_code_communes
     description: Communes candidates par code postal (ephemeral, injecté en CTE).
 
+  - name: int_postal_city_communes
+    description: >
+      Résolution de chaque adresse connue (code postal, ville), actuelle ou passée,
+      vers sa commune officielle (meilleure candidate).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [postal_code, city]
+    columns:
+      - name: commune_code
+        data_tests:
+          - not_null
+
   - name: int_customers_geolocated
-    description: Clients rattachés à leur commune officielle (meilleure candidate par code postal).
+    description: Clients (état courant) rattachés à leur commune officielle.
     columns:
       - name: customer_id
         data_tests:
