@@ -209,6 +209,19 @@ npx @lightdash/cli@3.361.0 upload --path lightdash --force
 Lightdash interroge l'entrepôt via la cible `lightdash` de `profiles.yml`
 (`warehouse:5432`, réseau Docker), enregistrée avec `lightdash set-warehouse`.
 
+## Intégration continue (GitHub Actions)
+
+Le workflow `.github/workflows/ci.yml` s'exécute sur chaque pull request vers
+`main` et sur chaque push sur `develop` :
+
+| Job | Contenu |
+|---|---|
+| Qualité du code | `ruff check` et `ruff format --check` |
+| Ingestion et dbt build | PostgreSQL vide (service GitHub Actions), ingestion des trois sources, `dbt build` et `dbt source freshness` dans des schémas `ci_pr_<numéro>_*` |
+| Alerte Slack | Message en français sur `#data-alerts` si un job échoue (secret `SLACK_WEBHOOK_URL`) |
+
+En CI, la source DVF est limitée à Paris 2025 pour réduire la durée du run.
+
 ## Notebooks
 
 | Notebook | Contenu |
@@ -231,6 +244,7 @@ uv run ruff format --check .
 ## Structure du dépôt
 
 ```
+├── .github/workflows/ci.yml  # Intégration continue
 ├── docker-compose.yml        # Stack locale (PostgreSQL, Lightdash, S3) et profil airflow
 ├── airflow/
 │   ├── Dockerfile            # Airflow 3.3.2 + Cosmos, environnement dbt/dlt isolé
@@ -272,5 +286,5 @@ uv run ruff format --check .
 - [x] Étape 5 : dbt avancé (snapshot SCD2, incrémental, tests singuliers et unitaires, Elementary, alertes Slack)
 - [x] Étape 6 : orchestration Airflow + Cosmos (DAG quotidien, alertes Slack en français)
 - [x] Étape 7 : couche sémantique et dashboard Lightdash (4 onglets, versionné en YAML)
-- [ ] Étape 8 : CI/CD GitHub Actions
+- [x] Étape 8 : intégration continue GitHub Actions (ruff, ingestion, dbt build, alerte Slack)
 - [ ] Étape 9 : déploiement sur VPS
