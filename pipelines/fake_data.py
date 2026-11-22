@@ -6,6 +6,7 @@ Les données sont déterministes (graines fixes) et évoluent avec le temps :
 Cela permet de tester le chargement incrémental (dlt) et l'historisation SCD2 (dbt).
 """
 
+import bisect
 import random
 from datetime import datetime, timedelta, timezone
 
@@ -50,13 +51,26 @@ def generate_products():
         }
 
 
+def _customer_created_at(rng: random.Random) -> datetime:
+    """Date d'inscription d'un client (premiers tirages de son générateur aléatoire)."""
+    return START_DATE + timedelta(days=rng.randint(0, 300), seconds=rng.randint(0, 86_399))
+
+
+def customer_signup_dates() -> list[tuple[datetime, int]]:
+    """Dates d'inscription de tous les clients, triées : (date, customer_id)."""
+    return sorted(
+        (_customer_created_at(random.Random(f"customer-{customer_id}")), customer_id)
+        for customer_id in range(1, NB_CUSTOMERS + 1)
+    )
+
+
 def generate_customers(now: datetime):
     """Clients dans leur état à la date `now` (segment et adresse évoluent)."""
     for customer_id in range(1, NB_CUSTOMERS + 1):
         rng = random.Random(f"customer-{customer_id}")
         fake.seed_instance(customer_id)
 
-        created_at = START_DATE + timedelta(days=rng.randint(0, 300), seconds=rng.randint(0, 86_399))
+        created_at = _customer_created_at(rng)
         if created_at > now:
             continue
 
@@ -116,12 +130,17 @@ def _order_timeline(rng: random.Random, created_at: datetime):
 def generate_orders(updated_since: datetime, now: datetime):
     """Simule l'endpoint GET /orders?updated_since=... d'une API."""
     products = {p["product_id"]: p for p in generate_products()}
+    signups = customer_signup_dates()
+    signup_dates = [signed_up_at for signed_up_at, _ in signups]
     day = START_DATE
     while day <= now:
         rng = random.Random(f"orders-{day:%Y-%m-%d}")
         for i in range(rng.randint(15, 45)):
             created_at = day + timedelta(seconds=rng.randint(0, 86_399))
-            customer_id = rng.randint(1, NB_CUSTOMERS)
+            # Seuls les clients déjà inscrits à la date de la commande peuvent commander
+            nb_registered = bisect.bisect_right(signup_dates, created_at)
+            draw = rng.random()
+            customer_id = signups[int(draw * nb_registered)][1] if nb_registered else None
             items = []
             for line_number in range(1, rng.randint(1, 4) + 1):
                 product = products[rng.randint(1, NB_PRODUCTS)]
@@ -135,7 +154,7 @@ def generate_orders(updated_since: datetime, now: datetime):
             timeline = _order_timeline(rng, created_at)
 
             # Filtres appliqués APRÈS les tirages aléatoires pour rester déterministe
-            if created_at > now:
+            if created_at > now or customer_id is None:
                 continue
             status, updated_at = [(s, t) for s, t in timeline if t <= now][-1]
             if updated_at <= updated_since:
