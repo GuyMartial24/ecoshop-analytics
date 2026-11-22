@@ -1,8 +1,5 @@
--- Intégrité de l'historique SCD2 : les versions d'un client doivent se suivre sans
--- trou ni chevauchement (la fin d'une version = le début de la suivante), et seule
--- la dernière version peut être la version courante.
--- Sans cette garantie, la jointure temporelle de fct_orders pourrait rattacher une
--- commande à zéro ou à plusieurs versions.
+-- Les versions d'un client se suivent sans trou ni chevauchement,
+-- et seule la dernière est la version courante.
 
 with versions as (
 
@@ -21,11 +18,11 @@ with versions as (
 select *
 from versions
 where
-    -- trou ou chevauchement avec la version suivante
+    -- trou ou chevauchement
     (next_valid_from is not null and valid_to <> next_valid_from)
-    -- une version courante qui n'est pas la dernière
+    -- version courante qui n'est pas la dernière
     or (next_valid_from is not null and is_current)
-    -- une dernière version qui n'est pas courante (client non supprimé à la source)
+    -- dernière version qui n'est pas courante
     or (next_valid_from is null and not is_current)
     -- période vide ou inversée
     or valid_from >= valid_to

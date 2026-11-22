@@ -13,28 +13,26 @@ clean-targets:
   - target
   - dbt_packages
 
-# Variables globales, surchargeables à l'exécution : dbt build --vars '{vat_rate: 0.055}'
+# Surchargeables avec --vars
 vars:
-  vat_rate: 0.20                # TVA française au taux normal (prix catalogue exprimés TTC)
-  dvf_min_price_per_m2: 1000    # en dessous : vente atypique (donation déguisée, erreur de saisie...)
-  dvf_max_price_per_m2: 25000   # au-dessus : vente atypique (lot mal renseigné, bien d'exception...)
-  orders_lookback_days: 3       # fenêtre de sécurité du modèle incrémental fct_orders
+  vat_rate: 0.20                # TVA (prix catalogue TTC)
+  dvf_min_price_per_m2: 1000    # bornes du prix au m² DVF
+  dvf_max_price_per_m2: 25000
+  orders_lookback_days: 3       # rattrapage de fct_orders (incrémental)
 
-# Architecture médaillon : chaque couche dans son propre schéma PostgreSQL.
-# Le nom final du schéma est calculé par la macro generate_schema_name (macros/).
+# Un schéma par couche (voir macros/generate_schema_name.sql)
 models:
   ecoshop:
-    staging:          # Silver : nettoyage, typage, renommage (1 modèle par table source)
+    staging:
       +schema: staging
       +materialized: view
-    intermediate:     # Silver : jointures et règles métier réutilisables
+    intermediate:
       +schema: intermediate
       +materialized: view
-    marts:            # Gold : modèle en étoile exposé à Lightdash
+    marts:
       +schema: marts
       +materialized: table
 
-  # Tables d'observabilité du package Elementary, dans leur propre schéma
   elementary:
     +schema: elementary
 
@@ -42,9 +40,7 @@ seeds:
   ecoshop:
     +schema: seeds
 
-# Réglages requis par Elementary : ses matérialisations enrichissent celles de dbt
-# pour collecter les résultats des tests, et ses hooks tournent aussi lors de
-# `dbt source freshness`.
+# Requis par Elementary
 flags:
   require_explicit_package_overrides_for_builtin_materializations: false
   source_freshness_run_project_hooks: true

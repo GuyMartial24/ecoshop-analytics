@@ -1,7 +1,4 @@
--- Codes postaux des communes (1 ligne = 1 couple commune / code postal)
---
--- Une commune peut avoir plusieurs codes postaux (Paris en a 20) et un code postal
--- peut couvrir plusieurs communes : la relation est de type plusieurs-à-plusieurs.
+-- Correspondance commune / code postal (plusieurs-à-plusieurs).
 
 with postal_codes as (
 
@@ -18,7 +15,6 @@ communes as (
 renamed as (
 
     select
-        -- Clé de substitution : hachage stable de la clé composite (dbt_utils)
         {{ dbt_utils.generate_surrogate_key(['communes.code', 'postal_codes.value']) }}
                                         as commune_postal_code_id,
         communes.code                   as commune_code,

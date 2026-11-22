@@ -1,11 +1,6 @@
--- Ventes immobilières DVF au grain de la mutation (1 ligne = 1 vente)
---
--- Dans la source, une vente occupe une ligne par lot ou local, et son prix est répété
--- sur chacune de ces lignes. Sommer ce prix au grain ligne multiplierait les montants :
--- on remonte donc au grain mutation avant tout calcul.
---
--- Prix au m² : calculé uniquement sur les ventes "de référence" (une vente simple
--- portant sur un seul logement), sinon la surface ou le prix seraient ambigus.
+-- Ventes DVF : 1 ligne par mutation.
+-- Le prix est répété sur chaque ligne d'une mutation, d'où l'agrégation.
+-- Prix au m² calculé seulement pour une vente d'un seul logement.
 
 with lines as (
 
@@ -19,9 +14,9 @@ per_mutation as (
         mutation_id,
         min(mutation_date)                                      as mutation_date,
         min(mutation_type)                                      as mutation_type,
-        -- Prix identique sur toutes les lignes d'une mutation (vérifié) : max() le dédoublonne
+        -- Même prix sur toutes les lignes de la mutation
         max(property_value)                                     as property_value,
-        -- Commune majoritaire si la vente porte sur plusieurs communes
+        -- Commune la plus fréquente
         mode() within group (order by commune_code)             as commune_code,
         min(department_code)                                    as department_code,
         count(distinct commune_code)                            as commune_count,
@@ -69,10 +64,10 @@ final as (
         case
             when is_reference_sale then round(property_value / dwelling_area_m2, 2)
         end                                                     as price_per_m2,
-        -- Ventes de référence au prix au m² hors bornes : exclues des moyennes
         is_reference_sale and not (
             property_value / dwelling_area_m2
-                between {{ var('dvf_min_price_per_m2') }} and {{ var('dvf_max_price_per_m2') }}
+                between {{ var('dvf_min_price_per_m2') }}
+                and {{ var('dvf_max_price_per_m2') }}
         )                                                       as is_price_outlier
 
     from classified

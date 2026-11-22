@@ -1,7 +1,5 @@
--- Lignes de commande valorisées (1 ligne = 1 article d'une commande)
---
--- Les prix catalogue sont TTC (vente aux particuliers) ; le coût d'achat est HT.
--- La marge se calcule donc sur le montant HT : marge = CA net HT - coût.
+-- Lignes de commande valorisées : prix TTC, coût HT,
+-- marge calculée sur le HT.
 
 with items as (
 

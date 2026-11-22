@@ -1,23 +1,25 @@
-"""Pipeline dlt : ingestion du back-office EcoShop dans PostgreSQL (schéma raw_ecoshop).
+"""Ingestion du back-office EcoShop dans le schéma raw_ecoshop.
 
-Usage (depuis la racine du projet) :
-    uv run python pipelines/ecoshop_pipeline.py
+Lancement : uv run python pipelines/ecoshop_pipeline.py
 
-La variable d'environnement ECOSHOP_SIMULATED_NOW (date ISO 8601) permet de faire
-tourner le simulateur à une date passée ; elle sert uniquement au rejeu de
-l'historique (pipelines/replay_history.py).
+ECOSHOP_SIMULATED_NOW (date ISO 8601) fixe la date du simulateur.
+Utilisée uniquement par replay_history.py.
 """
 
 import os
 from datetime import datetime, timezone
 
 import dlt
-
-from fake_data import START_DATE, generate_customers, generate_orders, generate_products
+from fake_data import (
+    START_DATE,
+    generate_customers,
+    generate_orders,
+    generate_products,
+)
 
 
 def current_time() -> datetime:
-    """Date de référence du simulateur : maintenant, ou la date simulée si elle est définie."""
+    """Date courante, ou date simulée si ECOSHOP_SIMULATED_NOW existe."""
     simulated_now = os.environ.get("ECOSHOP_SIMULATED_NOW")
     if simulated_now:
         return datetime.fromisoformat(simulated_now)
@@ -26,19 +28,16 @@ def current_time() -> datetime:
 
 @dlt.resource(name="products", write_disposition="replace")
 def products():
-    """Catalogue produits : petit référentiel renvoyé en entier -> on remplace la table."""
     yield from generate_products()
 
 
-@dlt.resource(name="customers", write_disposition="merge", primary_key="customer_id")
+@dlt.resource(
+    name="customers", write_disposition="merge", primary_key="customer_id"
+)
 def customers(
     updated_at=dlt.sources.incremental("updated_at", initial_value=START_DATE),
 ):
-    """Clients : upsert sur customer_id.
-
-    La source renvoie tous les clients ; dlt écarte lui-même ceux dont
-    updated_at n'a pas bougé depuis le dernier chargement (filtrage côté dlt).
-    """
+    # dlt écarte les clients non modifiés depuis le dernier chargement
     yield from generate_customers(now=current_time())
 
 
@@ -46,11 +45,7 @@ def customers(
 def orders(
     updated_at=dlt.sources.incremental("updated_at", initial_value=START_DATE),
 ):
-    """Commandes : upsert sur order_id.
-
-    On transmet la dernière valeur chargée à la source (filtrage côté source),
-    comme on le ferait avec une API : GET /orders?updated_since=<last_value>.
-    """
+    # La dernière valeur chargée est transmise à la source
     yield from generate_orders(
         updated_since=updated_at.last_value,
         now=current_time(),
@@ -59,16 +54,14 @@ def orders(
 
 @dlt.source(name="ecoshop")
 def ecoshop_source():
-    """Regroupe les tables issues du même système source (le back-office)."""
     return products, customers, orders
 
 
 def run():
-    """Lance le chargement et renvoie le rapport de chargement (LoadInfo)."""
     pipeline = dlt.pipeline(
-        pipeline_name="ecoshop",      # nom du pipeline (et de son état local)
-        destination="postgres",       # identifiants lus dans .dlt/secrets.toml
-        dataset_name="raw_ecoshop",   # schéma PostgreSQL de destination (Bronze)
+        pipeline_name="ecoshop",
+        destination="postgres",
+        dataset_name="raw_ecoshop",
     )
     return pipeline.run(ecoshop_source())
 

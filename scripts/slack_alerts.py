@@ -1,21 +1,13 @@
-"""Alertes qualité des données en français sur Slack (#data-alerts).
+"""Alertes qualité des données sur Slack (#data-alerts), en français.
 
-Règles de rédaction : messages en français, sobres, sans aucun émoji.
+Lit les résultats enregistrés par Elementary (schéma `elementary`) et les
+publie via le webhook SLACK_WEBHOOK_URL.
 
-Lit les résultats collectés par le package dbt Elementary (schéma `elementary`) pour la
-dernière exécution dbt (build ou test) et publie un message en français sur Slack via un
-Incoming Webhook. Remplace `edr monitor`, dont les messages ne sont disponibles qu'en anglais.
-
-Variables d'environnement (fichier .env en local) :
-    WAREHOUSE_USER, WAREHOUSE_PASSWORD, WAREHOUSE_DB, WAREHOUSE_PORT (ou DBT_HOST / DBT_PORT)
-    SLACK_WEBHOOK_URL
-
-Usage (depuis la racine du projet) :
-    uv run python scripts/slack_alerts.py            # envoie une alerte s'il y a des anomalies
-    uv run python scripts/slack_alerts.py --apercu   # affiche le message sans l'envoyer
-    uv run python scripts/slack_alerts.py --toujours # envoie aussi un message si tout est OK
+Lancement :
+    uv run python scripts/slack_alerts.py              # si anomalies
+    uv run python scripts/slack_alerts.py --apercu     # sans envoi
+    uv run python scripts/slack_alerts.py --toujours   # même si tout est OK
     uv run python scripts/slack_alerts.py --depuis 2026-11-22T02:00:00+00:00
-                                                     # agrège les exécutions depuis cette date
 """
 
 import argparse
@@ -30,14 +22,13 @@ from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-STATUTS = {
+STATUS_LABELS = {
     "error": "Erreur",
     "fail": "Échec",
     "warn": "Avertissement",
 }
 
-# Libellés français des types de tests (nom court dbt -> libellé)
-TYPES_DE_TESTS = {
+TEST_LABELS = {
     "not_null": "valeurs manquantes",
     "unique": "doublons",
     "relationships": "intégrité référentielle",
@@ -52,19 +43,20 @@ TYPES_DE_TESTS = {
 }
 
 
-def connexion():
+def connect():
+    port = os.environ.get("DBT_PORT", os.environ.get("WAREHOUSE_PORT", "5433"))
     return psycopg2.connect(
         host=os.environ.get("DBT_HOST", "localhost"),
-        port=int(os.environ.get("DBT_PORT", os.environ.get("WAREHOUSE_PORT", "5433"))),
+        port=int(port),
         user=os.environ["WAREHOUSE_USER"],
         password=os.environ["WAREHOUSE_PASSWORD"],
         dbname=os.environ["WAREHOUSE_DB"],
     )
 
 
-def derniere_execution(curseur):
-    """Dernière exécution dbt ayant lancé des tests (build ou test)."""
-    curseur.execute(
+def last_invocation(cursor):
+    """Dernière exécution dbt build ou test."""
+    cursor.execute(
         """
         select invocation_id, command, generated_at
         from elementary.dbt_invocations
@@ -73,141 +65,168 @@ def derniere_execution(curseur):
         limit 1
         """
     )
-    return curseur.fetchone()
+    return cursor.fetchone()
 
 
-def resultats_tests(curseur, invocation_id=None, depuis=None):
-    """Résultats de tests d'une exécution dbt, ou de toutes les exécutions depuis une date.
+def test_results(cursor, invocation_id=None, since=None):
+    """Résultats d'une exécution, ou de toutes les exécutions depuis `since`.
 
-    Le second cas sert à Airflow : avec Cosmos, chaque modèle dbt est une exécution
-    séparée, il faut donc agréger tous les résultats du run.
+    `since` sert pour Airflow : Cosmos lance une exécution dbt par tâche.
     """
-    filtre, parametre = (
-        ("invocation_id = %s", invocation_id) if depuis is None else ("detected_at >= %s", depuis)
-    )
-    curseur.execute(
+    if since is None:
+        condition, value = "invocation_id = %s", invocation_id
+    else:
+        condition, value = "detected_at >= %s", since
+    cursor.execute(
         f"""
-        select status, test_short_name, test_type, schema_name, table_name,
-               column_name, failures
+        select status, test_short_name, test_type, schema_name,
+               table_name, column_name, failures
         from elementary.elementary_test_results
-        where {filtre}
+        where {condition}
         """,
-        (parametre,),
+        (value,),
     )
-    return curseur.fetchall()
+    return cursor.fetchall()
 
 
-def modeles_en_erreur(curseur, invocation_id=None, depuis=None):
-    filtre, parametre = (
-        ("invocation_id = %s", invocation_id)
-        if depuis is None
-        else ("generated_at::timestamp >= %s", depuis)
-    )
-    curseur.execute(
+def failed_models(cursor, invocation_id=None, since=None):
+    if since is None:
+        condition, value = "invocation_id = %s", invocation_id
+    else:
+        condition, value = "generated_at::timestamp >= %s", since
+    cursor.execute(
         f"""
         select name, resource_type, message
         from elementary.dbt_run_results
-        where {filtre} and status = 'error'
+        where {condition} and status = 'error'
         """,
-        (parametre,),
+        (value,),
     )
-    return curseur.fetchall()
+    return cursor.fetchall()
 
 
-def libelle_test(test_short_name, test_type):
-    if test_short_name in TYPES_DE_TESTS:
-        return TYPES_DE_TESTS[test_short_name]
-    if test_type == "dbt_test" and test_short_name.startswith("assert_"):
-        return f"règle métier ({test_short_name})"
-    return test_short_name
+def test_label(short_name, test_type):
+    if short_name in TEST_LABELS:
+        return TEST_LABELS[short_name]
+    if test_type == "dbt_test" and short_name.startswith("assert_"):
+        return f"règle métier ({short_name})"
+    return short_name
 
 
-def construire_message(contexte, resultats, erreurs):
-    """contexte : phrase décrivant le périmètre (exécution dbt ou run Airflow)."""
-    anomalies = [r for r in resultats if r[0] in STATUTS]
-    nb = {statut: sum(1 for r in anomalies if r[0] == statut) for statut in STATUTS}
-    gravite = "ÉCHEC" if (nb["fail"] or nb["error"] or erreurs) else "AVERTISSEMENT"
+def build_message(context_line, results, errors):
+    """Renvoie (message, True si quelque chose est à signaler)."""
+    issues = [r for r in results if r[0] in STATUS_LABELS]
+    counts = {
+        status: sum(1 for r in issues if r[0] == status)
+        for status in STATUS_LABELS
+    }
+    nb_failed = counts["fail"] + counts["error"]
 
-    lignes = [
-        f"*Contrôle qualité des données EcoShop : {gravite if anomalies or erreurs else 'OK'}*",
-        contexte,
-        (
-            f"{len(resultats)} tests exécutés : {nb['fail'] + nb['error']} en échec, "
-            f"{nb['warn']} en avertissement."
-        ),
+    if nb_failed or errors:
+        level = "ÉCHEC"
+    elif issues:
+        level = "AVERTISSEMENT"
+    else:
+        level = "OK"
+
+    lines = [
+        f"*Contrôle qualité des données EcoShop : {level}*",
+        context_line,
+        f"{len(results)} tests exécutés : {nb_failed} en échec, "
+        f"{counts['warn']} en avertissement.",
     ]
 
-    if erreurs:
-        lignes.append("")
-        lignes.append("*Modèles en erreur*")
-        for nom, type_ressource, message in erreurs:
-            lignes.append(f"- `{nom}` ({type_ressource}) : {(message or '')[:200]}")
-
-    if anomalies:
-        lignes.append("")
-        lignes.append("*Tests en anomalie*")
-        ordre = {"error": 0, "fail": 1, "warn": 2}
-        for statut, nom_court, type_test, schema, table, colonne, echecs in sorted(
-            anomalies, key=lambda r: (ordre[r[0]], r[3] or "", r[4] or "")
-        ):
-            cible = f"{schema}.{table}" + (f".{colonne}" if colonne else "")
-            detail = f" : {echecs} ligne(s) en anomalie" if echecs else ""
-            lignes.append(
-                f"- {STATUTS[statut]} | {libelle_test(nom_court, type_test)} | `{cible}`{detail}"
+    if errors:
+        lines += ["", "*Modèles en erreur*"]
+        for name, resource_type, message in errors:
+            lines.append(
+                f"- `{name}` ({resource_type}) : {(message or '')[:200]}"
             )
 
-    lignes.append("")
-    lignes.append(
+    if issues:
+        lines += ["", "*Tests en anomalie*"]
+        order = {"error": 0, "fail": 1, "warn": 2}
+        issues.sort(key=lambda r: (order[r[0]], r[3] or "", r[4] or ""))
+        for status, short_name, test_type, schema, table, column, nb in issues:
+            target = f"{schema}.{table}" + (f".{column}" if column else "")
+            detail = f" : {nb} ligne(s) en anomalie" if nb else ""
+            label = test_label(short_name, test_type)
+            lines.append(
+                f"- {STATUS_LABELS[status]} | {label} | `{target}`{detail}"
+            )
+
+    lines += [
+        "",
         "Rapport détaillé : `uv run edr report` depuis dbt_project/ "
-        "(fichier edr_target/elementary_report.html)."
+        "(fichier edr_target/elementary_report.html).",
+    ]
+    return "\n".join(lines), bool(issues or errors)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Alertes qualité des données sur Slack."
     )
-    return "\n".join(lignes), bool(anomalies or erreurs)
+    parser.add_argument(
+        "--apercu", action="store_true", help="affiche le message sans envoi"
+    )
+    parser.add_argument(
+        "--toujours", action="store_true", help="envoie même si tout est OK"
+    )
+    parser.add_argument(
+        "--depuis", help="date ISO 8601 : exécutions depuis cette date"
+    )
+    return parser.parse_args()
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Alertes qualité des données en français sur Slack.")
-    parser.add_argument("--apercu", action="store_true", help="affiche le message sans l'envoyer")
-    parser.add_argument("--toujours", action="store_true", help="envoie un message même si tout est OK")
-    parser.add_argument(
-        "--depuis",
-        help="date ISO 8601 : agrège toutes les exécutions dbt depuis cette date (utilisé par Airflow)",
-    )
-    args = parser.parse_args()
-
-    # Les variables déjà définies (ex. dans le conteneur Airflow) restent prioritaires
+    args = parse_args()
+    # Les variables déjà définies (conteneur Airflow) restent prioritaires
     load_dotenv(PROJECT_ROOT / ".env")
 
-    with connexion() as conn, conn.cursor() as curseur:
+    with connect() as conn, conn.cursor() as cursor:
         if args.depuis:
-            # Elementary stocke des dates UTC sans fuseau horaire
-            depuis = datetime.fromisoformat(args.depuis).astimezone(timezone.utc).replace(tzinfo=None)
-            resultats = resultats_tests(curseur, depuis=depuis)
-            erreurs = modeles_en_erreur(curseur, depuis=depuis)
-            contexte = f"Pipeline quotidien démarré le {depuis:%d/%m/%Y à %H:%M} (UTC)"
+            # Elementary stocke des dates UTC sans fuseau
+            since = datetime.fromisoformat(args.depuis)
+            since = since.astimezone(timezone.utc).replace(tzinfo=None)
+            results = test_results(cursor, since=since)
+            errors = failed_models(cursor, since=since)
+            context_line = (
+                f"Pipeline quotidien démarré le {since:%d/%m/%Y à %H:%M} (UTC)"
+            )
         else:
-            execution = derniere_execution(curseur)
-            if execution is None:
+            invocation = last_invocation(cursor)
+            if invocation is None:
                 print("Aucune exécution dbt enregistrée par Elementary.")
                 return 0
-            invocation_id, commande, genere_le = execution
-            if isinstance(genere_le, str):
-                genere_le = datetime.fromisoformat(genere_le)
-            resultats = resultats_tests(curseur, invocation_id=invocation_id)
-            erreurs = modeles_en_erreur(curseur, invocation_id=invocation_id)
-            contexte = f"Exécution `dbt {commande}` du {genere_le:%d/%m/%Y à %H:%M} (UTC)"
+            invocation_id, command, generated_at = invocation
+            if isinstance(generated_at, str):
+                generated_at = datetime.fromisoformat(generated_at)
+            results = test_results(cursor, invocation_id=invocation_id)
+            errors = failed_models(cursor, invocation_id=invocation_id)
+            context_line = (
+                f"Exécution `dbt {command}` du "
+                f"{generated_at:%d/%m/%Y à %H:%M} (UTC)"
+            )
 
-    message, a_signaler = construire_message(contexte, resultats, erreurs)
+    message, has_issues = build_message(context_line, results, errors)
 
     if args.apercu:
         print(message)
         return 0
-    if not a_signaler and not args.toujours:
+    if not has_issues and not args.toujours:
         print("Aucune anomalie : pas de message envoyé.")
         return 0
 
-    reponse = requests.post(os.environ["SLACK_WEBHOOK_URL"], json={"text": message}, timeout=30)
-    if reponse.status_code != 200:
-        print(f"Échec de l'envoi Slack (HTTP {reponse.status_code}) : {reponse.text}", file=sys.stderr)
+    response = requests.post(
+        os.environ["SLACK_WEBHOOK_URL"], json={"text": message}, timeout=30
+    )
+    if response.status_code != 200:
+        print(
+            f"Échec de l'envoi Slack (HTTP {response.status_code}) : "
+            f"{response.text}",
+            file=sys.stderr,
+        )
         return 1
     print("Alerte envoyée sur Slack.")
     return 0

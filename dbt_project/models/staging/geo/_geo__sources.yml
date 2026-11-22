@@ -37,7 +37,6 @@ sources:
       - name: _dlt_loads
         description: Journal des chargements dlt.
         config:
-          # Référentiel peu changeant : un rafraîchissement mensuel suffit
           loaded_at_field: inserted_at
           freshness:
             warn_after: {count: 30, period: day}

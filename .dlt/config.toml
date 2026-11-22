@@ -1,9 +1,7 @@
-# Configuration non sensible de dlt (versionnée)
 [runtime]
-log_level = "WARNING"       # n'affiche que les avertissements et les erreurs
-dlthub_telemetry = false    # désactive l'envoi de statistiques d'usage anonymes
+log_level = "WARNING"
+dlthub_telemetry = false
 
-# Paramètres de la source DVF (injectés dans dvf_source via dlt.config.value)
 [sources.dvf]
 annees = [2024, 2025]
 departements = ["75", "69", "33"]

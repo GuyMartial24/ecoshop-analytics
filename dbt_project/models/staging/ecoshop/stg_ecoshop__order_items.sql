@@ -1,8 +1,5 @@
--- Lignes de commande (1 ligne = 1 article d'une commande)
---
--- dlt a extrait la liste imbriquée `items` dans une table enfant reliée à sa commande
--- par un identifiant technique (_dlt_parent_id -> orders._dlt_id). On remplace ce lien
--- technique par la clé métier order_id, seule exploitable dans les couches suivantes.
+-- Lignes de commande : 1 ligne par article.
+-- Le lien dlt (_dlt_parent_id) est remplacé par order_id.
 
 with items as (
 

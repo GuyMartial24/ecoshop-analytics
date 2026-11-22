@@ -1,5 +1,4 @@
-# Contexte de construction de l'image Airflow : seuls les fichiers de dépendances
-# Python sont nécessaires (le code est monté en volume au lancement).
+# Seuls les fichiers de dépendances sont utiles à l'image Airflow
 *
 !pyproject.toml
 !uv.lock

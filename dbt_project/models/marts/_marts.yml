@@ -2,7 +2,7 @@ version: 2
 
 models:
 
-  # ---------------------------------------------------------------- Dimensions
+  # Dimensions
 
   - name: dim_communes
     description: Communes et arrondissements municipaux avec département, région, population et coordonnées GPS.
@@ -87,7 +87,7 @@ models:
       - name: is_current
         description: Vrai pour la version en vigueur aujourd'hui (une seule par client).
 
-  # ------------------------------------------------------------------- Faits
+  # Faits
 
   - name: fct_orders
     description: >
@@ -101,9 +101,7 @@ models:
       - type: primary_key
         columns: [order_id]
     data_tests:
-      # Détection d'anomalie (Elementary) : le nombre de commandes par jour des 2
-      # derniers jours est comparé à la tendance des 30 jours précédents. Un écart
-      # statistiquement anormal (chute ou pic) déclenche un avertissement.
+      # Volume de commandes par jour comparé aux 30 jours précédents
       - elementary.volume_anomalies:
           arguments:
             timestamp_column: ordered_at
@@ -231,8 +229,7 @@ models:
                 severity: warn   # communes ayant changé de code depuis la vente
       - name: price_per_m2
         data_tests:
-          # Les cessions symboliques (ex. 1 euro pour 300 m²) arrondissent à 0 : elles
-          # sont déjà signalées comme valeurs aberrantes et exclues de ce contrôle
+          # Les ventes à 1 euro sont déjà signalées comme aberrantes
           - positive_value:
               config:
                 where: "not is_price_outlier"

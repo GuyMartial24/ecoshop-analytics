@@ -1,8 +1,4 @@
--- Règle métier : une ligne vendue à perte doit forcément porter une remise.
---
--- Une marge négative est acceptable sur une ligne remisée (opération commerciale),
--- mais sans remise elle trahit une erreur de prix catalogue ou de coût d'achat.
--- Un test singulier échoue s'il renvoie au moins une ligne.
+-- Une ligne vendue à perte doit avoir une remise.
 
 select
     order_item_id,

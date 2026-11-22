@@ -13,3 +13,21 @@ dependencies = [
     "python-dotenv>=1.2.4",
     "requests>=2.34.2",
 ]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.4.0",
+    "matplotlib>=3.11.2",
+    "pandas>=3.1.1",
+    "ruff>=0.17.6",
+    "sqlalchemy>=2.1.9",
+]
+
+[tool.ruff]
+line-length = 79
+target-version = "py312"
+extend-include = ["*.ipynb"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, isort, pep8-naming
+select = ["E", "W", "F", "I", "N"]

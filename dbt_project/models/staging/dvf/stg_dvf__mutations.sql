@@ -1,8 +1,5 @@
--- Lignes DVF nettoyées (1 ligne = 1 lot ou local d'une mutation)
---
--- Rappel : une mutation (une vente) peut porter sur plusieurs lots ou locaux.
--- property_value est le prix de la mutation entière, répété sur chacune de ses lignes :
--- il ne doit jamais être sommé à ce grain (voir la couche intermediate).
+-- Lignes DVF : 1 ligne par lot ou local d'une mutation.
+-- property_value = prix de la mutation entière, répété sur chaque ligne.
 
 with source as (
 

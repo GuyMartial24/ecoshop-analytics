@@ -1,10 +1,8 @@
-# Profil de connexion dbt. Aucun secret ici : tout est lu dans les variables
-# d'environnement (fichier .env en local, secrets GitHub en CI, Airflow sur le VPS).
+# Identifiants lus dans les variables d'environnement
 ecoshop:
   target: dev
   outputs:
 
-    # Développement local : dbt tourne sur le poste, l'entrepôt est dans Docker
     dev:
       type: postgres
       host: "{{ env_var('DBT_HOST', 'localhost') }}"
@@ -15,7 +13,7 @@ ecoshop:
       schema: analytics
       threads: 4
 
-    # Intégration continue : schémas isolés par PR (ex. ci_pr_12_staging)
+    # CI : schémas préfixés par DBT_CI_SCHEMA
     ci:
       type: postgres
       host: "{{ env_var('DBT_HOST', 'localhost') }}"
@@ -26,7 +24,7 @@ ecoshop:
       schema: "{{ env_var('DBT_CI_SCHEMA', 'ci') }}"
       threads: 4
 
-    # Production (VPS) : dbt s'exécute dans le réseau Docker, à côté de l'entrepôt
+    # Production (VPS)
     prod:
       type: postgres
       host: "{{ env_var('DBT_HOST', 'warehouse') }}"
@@ -37,7 +35,7 @@ ecoshop:
       schema: analytics
       threads: 4
 
-# Profil lu par la CLI Elementary (edr) : même entrepôt, schéma des tables d'observabilité
+# Profil utilisé par la CLI Elementary (edr)
 elementary:
   target: default
   outputs:
