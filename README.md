@@ -177,6 +177,38 @@ contient deux environnements Python séparés : celui d'Airflow (avec Cosmos) et
 `/opt/ecoshop-venv`, construit depuis `uv.lock`, où dbt et dlt s'exécutent en
 sous-processus, sans conflit de dépendances.
 
+## Tableau de bord (Lightdash)
+
+La couche sémantique (libellés, métriques, formats, jointures) est définie dans
+`dbt_project/models/marts/_marts.yml` (blocs `meta`). Le dashboard
+**EcoShop Analytics** comporte quatre onglets :
+
+| Onglet | Contenu |
+|---|---|
+| Vue exécutive | CA TTC, taux de marge, panier moyen, commandes, CA mensuel, CA par segment |
+| Cartographie France | CA par commune, prix médian au m² DVF par commune et par département |
+| Clients et rétention | Segments, top 10 clients, fréquence d'achat, commandes par segment et par mois |
+| Qualité et fraîcheur | Derniers chargements, volumes ingérés, tests en anomalie, évolution de la qualité |
+
+Les graphiques et le dashboard sont versionnés en YAML dans `lightdash/`.
+Les commandes se lancent depuis la racine, avec les variables du `.env` chargées
+et le venv activé (la CLI exécute dbt) :
+
+```bash
+npx @lightdash/cli@3.361.0 login http://localhost:8080 --token $LIGHTDASH_API_KEY
+
+# Couche sémantique : déploie les modèles marts
+npx @lightdash/cli@3.361.0 deploy --project-dir dbt_project \
+    --profiles-dir dbt_project --target dev --select marts
+
+# Graphiques et dashboards : export depuis Lightdash, ou envoi vers Lightdash
+npx @lightdash/cli@3.361.0 download --path lightdash
+npx @lightdash/cli@3.361.0 upload --path lightdash --force
+```
+
+Lightdash interroge l'entrepôt via la cible `lightdash` de `profiles.yml`
+(`warehouse:5432`, réseau Docker), enregistrée avec `lightdash set-warehouse`.
+
 ## Notebooks
 
 | Notebook | Contenu |
@@ -215,6 +247,7 @@ uv run ruff format --check .
 ├── scripts/
 │   └── slack_alerts.py       # Alertes qualité en français sur Slack
 ├── notebooks/                # Exploration et contrôles (Jupyter)
+├── lightdash/                # Graphiques et dashboard Lightdash (YAML)
 └── dbt_project/
     ├── dbt_project.yml       # Couches, schémas, matérialisations et variables
     ├── profiles.yml          # Connexions dev / ci / prod / elementary (variables d'environnement)
@@ -238,6 +271,6 @@ uv run ruff format --check .
 - [x] Étape 4 : modélisation métier (packages, macros, intermediate, marts en étoile, contrat)
 - [x] Étape 5 : dbt avancé (snapshot SCD2, incrémental, tests singuliers et unitaires, Elementary, alertes Slack)
 - [x] Étape 6 : orchestration Airflow + Cosmos (DAG quotidien, alertes Slack en français)
-- [ ] Étape 7 : couche sémantique et dashboards Lightdash
+- [x] Étape 7 : couche sémantique et dashboard Lightdash (4 onglets, versionné en YAML)
 - [ ] Étape 8 : CI/CD GitHub Actions
 - [ ] Étape 9 : déploiement sur VPS
