@@ -99,7 +99,81 @@ services:
     ports:
       - "${LIGHTDASH_PORT}:8080"
 
+  # --------------------------------------------------------------------------
+  # Orchestration (profil "airflow", lancé uniquement à la demande) :
+  #   docker compose --profile airflow up -d --build
+  # Reproduit l'Airflow de production : 3.3.2, mode standalone, LocalExecutor,
+  # métadonnées dans PostgreSQL.
+  # --------------------------------------------------------------------------
+
+  # Base de métadonnées d'Airflow (DAG, exécutions, journaux de tâches)
+  airflow-db:
+    image: postgres:16
+    container_name: ecoshop-airflow-db
+    profiles: ["airflow"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${AIRFLOW_DB_USER}
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD}
+      POSTGRES_DB: ${AIRFLOW_DB_NAME}
+    volumes:
+      - airflow_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_DB_USER} -d ${AIRFLOW_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  airflow:
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    image: ecoshop-airflow:3.3.2
+    container_name: ecoshop-airflow
+    profiles: ["airflow"]
+    restart: unless-stopped
+    command: standalone
+    depends_on:
+      airflow-db:
+        condition: service_healthy
+      warehouse:
+        condition: service_healthy
+    environment:
+      # Airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-db:5432/${AIRFLOW_DB_NAME}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+      # Développement local uniquement : accès à l'interface sans authentification
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
+      # Projet EcoShop (code monté en volume, environnement Python dédié dans l'image)
+      ECOSHOP_HOME: /opt/ecoshop
+      ECOSHOP_VENV: /opt/ecoshop-venv
+      # dbt et le script d'alertes : l'entrepôt est joint par le réseau Docker
+      DBT_TARGET: dev
+      DBT_HOST: warehouse
+      DBT_PORT: "5432"
+      WAREHOUSE_USER: ${WAREHOUSE_USER}
+      WAREHOUSE_PASSWORD: ${WAREHOUSE_PASSWORD}
+      WAREHOUSE_DB: ${WAREHOUSE_DB}
+      # dlt : ces variables priment sur .dlt/secrets.toml (prévu pour localhost:5433)
+      DESTINATION__POSTGRES__CREDENTIALS__HOST: warehouse
+      DESTINATION__POSTGRES__CREDENTIALS__PORT: "5432"
+      DESTINATION__POSTGRES__CREDENTIALS__DATABASE: ${WAREHOUSE_DB}
+      DESTINATION__POSTGRES__CREDENTIALS__USERNAME: ${WAREHOUSE_USER}
+      DESTINATION__POSTGRES__CREDENTIALS__PASSWORD: ${WAREHOUSE_PASSWORD}
+      # Alertes Slack (en français)
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_logs:/opt/airflow/logs
+      - ./:/opt/ecoshop
+    ports:
+      - "${AIRFLOW_PORT:-8082}:8080"
+
 volumes:
   warehouse_data:
   lightdash_data:
   s3_data:
+  airflow_db_data:
+  airflow_logs:

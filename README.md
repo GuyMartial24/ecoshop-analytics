@@ -31,7 +31,7 @@ réelles DVF), transformation avec dbt et restitution dans des dashboards Lightd
 | Entrepôt | PostgreSQL 16 |
 | Transformation | dbt Core 1.12 (adaptateur PostgreSQL) |
 | BI | Lightdash (+ stockage S3 SeaweedFS en local) |
-| Orchestration | Airflow + Cosmos (à venir) |
+| Orchestration | Airflow 3.3.2 + Astronomer Cosmos 1.16 |
 | Infra | Docker Compose, GitHub Actions, VPS |
 
 ## Sources de données
@@ -148,10 +148,43 @@ cd dbt_project
 uv run --env-file ../.env edr report --project-dir . --profiles-dir .   # rapport HTML
 ```
 
+## Orchestration (Airflow + Cosmos)
+
+Airflow tourne en local dans un profil Docker Compose dédié, lancé uniquement à la
+demande. Sa configuration reproduit celle de production : Airflow 3.3.2, mode
+`standalone`, LocalExecutor et métadonnées dans PostgreSQL.
+
+```bash
+docker compose --profile airflow up -d --build   # interface : http://localhost:8082
+docker compose --profile airflow stop            # arrêt (libère la mémoire)
+```
+
+Le DAG `ecoshop_quotidien` s'exécute chaque nuit à 2 h (UTC) :
+
+```
+ingestion_dlt -> fraicheur_sources -> transformations_dbt (Cosmos) -> alertes_qualite_slack
+```
+
+| Tâche | Rôle |
+|---|---|
+| `ingestion_dlt` | Chargement des trois sources (`pipelines/run_all.py`), deux nouvelles tentatives en cas d'échec |
+| `fraicheur_sources` | `dbt source freshness` ; envoie aussi, une fois par run, les métadonnées du projet à Elementary |
+| `transformations_dbt` | Projet dbt rendu par Cosmos : une tâche par seed, modèle et snapshot, suivie de ses tests ; les tests portant sur plusieurs modèles sont des tâches à part |
+| `alertes_qualite_slack` | Synthèse qualité du run en français, exécutée même si une étape a échoué |
+
+Toute tâche en échec publie également une alerte Slack en français. L'image Airflow
+contient deux environnements Python séparés : celui d'Airflow (avec Cosmos) et
+`/opt/ecoshop-venv`, construit depuis `uv.lock`, où dbt et dlt s'exécutent en
+sous-processus, sans conflit de dépendances.
+
 ## Structure du dépôt
 
 ```
-├── docker-compose.yml        # Stack locale (PostgreSQL, Lightdash, S3)
+├── docker-compose.yml        # Stack locale (PostgreSQL, Lightdash, S3) et profil airflow
+├── airflow/
+│   ├── Dockerfile            # Airflow 3.3.2 + Cosmos, environnement dbt/dlt isolé
+│   └── dags/
+│       └── ecoshop_daily.py  # DAG quotidien ecoshop_quotidien
 ├── .dlt/config.toml          # Configuration dlt (non sensible)
 ├── pipelines/
 │   ├── fake_data.py          # Simulateur du back-office e-commerce
@@ -184,7 +217,7 @@ uv run --env-file ../.env edr report --project-dir . --profiles-dir .   # rappor
 - [x] Étape 3 : fondations dbt (sources, fraîcheur, staging, seed, tests)
 - [x] Étape 4 : modélisation métier (packages, macros, intermediate, marts en étoile, contrat)
 - [x] Étape 5 : dbt avancé (snapshot SCD2, incrémental, tests singuliers et unitaires, Elementary, alertes Slack)
-- [ ] Étape 6 : orchestration Airflow + Cosmos
+- [x] Étape 6 : orchestration Airflow + Cosmos (DAG quotidien, alertes Slack en français)
 - [ ] Étape 7 : couche sémantique et dashboards Lightdash
 - [ ] Étape 8 : CI/CD GitHub Actions
 - [ ] Étape 9 : déploiement sur VPS
