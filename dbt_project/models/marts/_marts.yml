@@ -1,0 +1,162 @@
+version: 2
+
+models:
+
+  # ---------------------------------------------------------------- Dimensions
+
+  - name: dim_communes
+    description: Communes et arrondissements municipaux avec département, région, population et coordonnées GPS.
+    columns:
+      - name: commune_code
+        description: Code INSEE.
+        data_tests:
+          - unique
+          - not_null
+      - name: latitude
+        data_tests:
+          - not_null
+      - name: longitude
+        data_tests:
+          - not_null
+
+  - name: dim_products
+    description: Catalogue produits avec prix TTC et HT, coût et marge unitaire.
+    columns:
+      - name: product_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_customers
+    description: >
+      Clients dans leur état courant, rattachés à leur commune, avec leurs indicateurs
+      de cycle de vie (commandes comptées dans le CA). Aucune donnée personnelle directe
+      (email, nom complet) n'est exposée.
+    columns:
+      - name: customer_id
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_segment
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Standard", "Premium", "VIP"]
+      - name: commune_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_communes')
+                field: commune_code
+
+  # ------------------------------------------------------------------- Faits
+
+  - name: fct_orders
+    description: Commandes avec montants (TTC, HT), coût et marge. Une ligne par commande.
+    config:
+      contract:
+        enforced: true
+    constraints:
+      - type: primary_key
+        columns: [order_id]
+    columns:
+      - name: order_id
+        data_type: varchar
+        constraints:
+          - type: not_null
+        data_tests:
+          - unique
+      - name: customer_id
+        data_type: bigint
+        constraints:
+          - type: not_null
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_customers')
+                field: customer_id
+      - name: commune_code
+        data_type: varchar
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_communes')
+                field: commune_code
+      - name: order_date
+        data_type: date
+        constraints:
+          - type: not_null
+      - name: ordered_at
+        data_type: timestamptz
+      - name: updated_at
+        data_type: timestamptz
+      - name: order_status
+        data_type: varchar
+        constraints:
+          - type: not_null
+      - name: order_status_label
+        data_type: varchar
+      - name: is_revenue
+        data_type: boolean
+        description: Vrai si la commande compte dans le chiffre d'affaires (expédiée ou livrée).
+      - name: is_final
+        data_type: boolean
+      - name: item_count
+        data_type: bigint
+      - name: total_quantity
+        data_type: bigint
+      - name: gross_amount_incl_vat
+        data_type: numeric(14, 2)
+      - name: discount_amount
+        data_type: numeric(14, 2)
+      - name: net_amount_incl_vat
+        data_type: numeric(14, 2)
+        description: Chiffre d'affaires TTC après remise.
+      - name: net_amount_excl_vat
+        data_type: numeric(14, 2)
+        description: Chiffre d'affaires HT après remise.
+      - name: cost_amount
+        data_type: numeric(14, 2)
+      - name: margin_amount
+        data_type: numeric(14, 2)
+        description: Marge = CA HT - coût d'achat.
+
+  - name: fct_order_items
+    description: Lignes de commande valorisées. Une ligne par article.
+    columns:
+      - name: order_item_id
+        data_tests:
+          - unique
+          - not_null
+      - name: order_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('fct_orders')
+                field: order_id
+      - name: product_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_products')
+                field: product_id
+
+  - name: fct_dvf_sales
+    description: >
+      Ventes immobilières DVF, une ligne par vente. Le prix au m² n'est renseigné que
+      pour les ventes de référence (vente simple d'un seul logement) ; filtrer
+      is_price_outlier = false pour les moyennes.
+    columns:
+      - name: mutation_id
+        data_tests:
+          - unique
+          - not_null
+      - name: commune_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_communes')
+                field: commune_code
+              config:
+                severity: warn   # communes ayant changé de code depuis la vente
