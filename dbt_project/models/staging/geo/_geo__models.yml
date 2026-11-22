@@ -1,0 +1,63 @@
+version: 2
+
+models:
+  - name: stg_geo__communes
+    description: Communes actuelles et arrondissements municipaux, géolocalisés.
+    columns:
+      - name: commune_code
+        description: Code INSEE (ex. 75111 pour Paris 11e).
+        data_tests:
+          - unique
+          - not_null
+      - name: department_code
+        description: >
+          Code département. Les collectivités d'outre-mer (975, 977, 978, 984, 986 à 989)
+          ont un code mais ne sont pas des départements : elles sont exclues du test.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_geo__departments')
+                field: department_code
+              config:
+                where: "department_code not in ('975', '977', '978', '984', '986', '987', '988', '989')"
+      - name: latitude
+        data_tests:
+          - not_null
+      - name: longitude
+        data_tests:
+          - not_null
+
+  - name: stg_geo__commune_postal_codes
+    description: Table de correspondance commune / code postal (plusieurs-à-plusieurs).
+    columns:
+      - name: commune_code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_geo__communes')
+                field: commune_code
+      - name: postal_code
+        data_tests:
+          - not_null
+
+  - name: stg_geo__departments
+    columns:
+      - name: department_code
+        data_tests:
+          - unique
+          - not_null
+      - name: region_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_geo__regions')
+                field: region_code
+
+  - name: stg_geo__regions
+    columns:
+      - name: region_code
+        data_tests:
+          - unique
+          - not_null

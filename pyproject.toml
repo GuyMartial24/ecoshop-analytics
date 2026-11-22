@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Plateforme analytique e-commerce et immobilière (DVF) avec dlt, dbt et Lightdash"
 requires-python = ">=3.12"
 dependencies = [
+    "dbt-postgres>=1.11.0",
     "dlt[postgres]>=1.32.0",
     "faker>=40.63.0",
     "pyarrow>=26.0.1",
