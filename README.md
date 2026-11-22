@@ -177,6 +177,25 @@ contient deux environnements Python séparés : celui d'Airflow (avec Cosmos) et
 `/opt/ecoshop-venv`, construit depuis `uv.lock`, où dbt et dlt s'exécutent en
 sous-processus, sans conflit de dépendances.
 
+## Notebooks
+
+| Notebook | Contenu |
+|---|---|
+| `notebooks/01_apercu_sources.ipynb` | Aperçu du simulateur et d'un fichier DVF avec les fonctions des pipelines |
+| `notebooks/02_controle_marts.ipynb` | Indicateurs, CA mensuel et prix au m² à partir des marts |
+
+Le code exécuté en production reste dans les fichiers `.py` ; les notebooks
+importent ces fichiers ou interrogent l'entrepôt.
+
+## Qualité du code
+
+Le code Python suit PEP 8 (lignes de 79 caractères), vérifié avec ruff :
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+```
+
 ## Structure du dépôt
 
 ```
@@ -195,6 +214,7 @@ sous-processus, sans conflit de dépendances.
 │   └── replay_history.py     # Rejeu de l'historique (développement uniquement)
 ├── scripts/
 │   └── slack_alerts.py       # Alertes qualité en français sur Slack
+├── notebooks/                # Exploration et contrôles (Jupyter)
 └── dbt_project/
     ├── dbt_project.yml       # Couches, schémas, matérialisations et variables
     ├── profiles.yml          # Connexions dev / ci / prod / elementary (variables d'environnement)
