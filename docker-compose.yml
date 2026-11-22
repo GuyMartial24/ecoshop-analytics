@@ -2,7 +2,7 @@ name: ecoshop
 
 services:
 
-  # Entrepôt de données : schémas raw (dlt), staging, snapshots, marts (dbt)
+  # Entrepôt de données (raw, staging, marts...)
   warehouse:
     image: postgres:16
     container_name: ecoshop-warehouse
@@ -21,7 +21,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # Base de métadonnées interne de Lightdash (non exposée hors du réseau Docker)
+  # Base interne de Lightdash
   lightdash-db:
     image: postgres:16
     container_name: ecoshop-lightdash-db
@@ -38,8 +38,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # Stockage objet compatible S3, exigé par Lightdash (résultats de requêtes, exports)
-  # Local uniquement : pas d'authentification, donc AUCUN port exposé hors du réseau Docker
+  # Stockage S3 pour Lightdash (sans authentification : pas de port exposé)
   s3:
     image: chrislusf/seaweedfs:4.00
     container_name: ecoshop-s3
@@ -48,7 +47,7 @@ services:
     volumes:
       - s3_data:/data
 
-  # Tâche ponctuelle : crée le bucket Lightdash puis s'arrête (code 0)
+  # Crée le bucket Lightdash puis s'arrête
   s3-init:
     image: amazon/aws-cli:2.27.0
     container_name: ecoshop-s3-init
@@ -68,7 +67,7 @@ services:
         done
         echo "Bucket $$S3_BUCKET prêt."
 
-  # Outil de BI : lit les modèles Gold (marts) produits par dbt
+  # BI
   lightdash:
     image: lightdash/lightdash:3.361.0
     container_name: ecoshop-lightdash
@@ -79,7 +78,7 @@ services:
       s3-init:
         condition: service_completed_successfully
     environment:
-      PGHOST: lightdash-db  # nom du service Docker (résolu sur le réseau interne)
+      PGHOST: lightdash-db
       PGPORT: 5432
       PGUSER: ${LIGHTDASH_DB_USER}
       PGPASSWORD: ${LIGHTDASH_DB_PASSWORD}
@@ -87,9 +86,9 @@ services:
       LIGHTDASH_SECRET: ${LIGHTDASH_SECRET}
       SITE_URL: ${SITE_URL}
       PORT: 8080
-      SECURE_COOKIES: "false"  # à passer à "true" en production derrière HTTPS
+      SECURE_COOKIES: "false"  # "true" en production (HTTPS)
       TRUST_PROXY: "false"
-      # Stockage S3 (SeaweedFS en local, un vrai S3 en production)
+      # S3 (SeaweedFS en local)
       S3_ENDPOINT: http://s3:8333
       S3_BUCKET: ${S3_BUCKET}
       S3_REGION: ${S3_REGION}
@@ -99,14 +98,10 @@ services:
     ports:
       - "${LIGHTDASH_PORT}:8080"
 
-  # --------------------------------------------------------------------------
-  # Orchestration (profil "airflow", lancé uniquement à la demande) :
+  # Airflow (profil "airflow") :
   #   docker compose --profile airflow up -d --build
-  # Reproduit l'Airflow de production : 3.3.2, mode standalone, LocalExecutor,
-  # métadonnées dans PostgreSQL.
-  # --------------------------------------------------------------------------
 
-  # Base de métadonnées d'Airflow (DAG, exécutions, journaux de tâches)
+  # Base de métadonnées d'Airflow
   airflow-db:
     image: postgres:16
     container_name: ecoshop-airflow-db
@@ -144,25 +139,28 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow-db:5432/${AIRFLOW_DB_NAME}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
-      # Développement local uniquement : accès à l'interface sans authentification
+      # Le rendu Cosmos (dbt ls) dépasse les 30 s par défaut
+      AIRFLOW__CORE__DAGBAG_IMPORT_TIMEOUT: "180"
+      AIRFLOW__DAG_PROCESSOR__DAG_FILE_PROCESSOR_TIMEOUT: "240"
+      # Local uniquement : interface sans authentification
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "true"
-      # Projet EcoShop (code monté en volume, environnement Python dédié dans l'image)
+      # Projet EcoShop
       ECOSHOP_HOME: /opt/ecoshop
       ECOSHOP_VENV: /opt/ecoshop-venv
-      # dbt et le script d'alertes : l'entrepôt est joint par le réseau Docker
+      # dbt et script d'alertes
       DBT_TARGET: dev
       DBT_HOST: warehouse
       DBT_PORT: "5432"
       WAREHOUSE_USER: ${WAREHOUSE_USER}
       WAREHOUSE_PASSWORD: ${WAREHOUSE_PASSWORD}
       WAREHOUSE_DB: ${WAREHOUSE_DB}
-      # dlt : ces variables priment sur .dlt/secrets.toml (prévu pour localhost:5433)
+      # dlt (priment sur .dlt/secrets.toml)
       DESTINATION__POSTGRES__CREDENTIALS__HOST: warehouse
       DESTINATION__POSTGRES__CREDENTIALS__PORT: "5432"
       DESTINATION__POSTGRES__CREDENTIALS__DATABASE: ${WAREHOUSE_DB}
       DESTINATION__POSTGRES__CREDENTIALS__USERNAME: ${WAREHOUSE_USER}
       DESTINATION__POSTGRES__CREDENTIALS__PASSWORD: ${WAREHOUSE_PASSWORD}
-      # Alertes Slack (en français)
+      # Alertes Slack
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
