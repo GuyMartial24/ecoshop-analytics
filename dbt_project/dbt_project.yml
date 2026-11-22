@@ -1,0 +1,32 @@
+name: ecoshop
+version: "1.0.0"
+profile: ecoshop
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+snapshot-paths: ["snapshots"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+analysis-paths: ["analyses"]
+
+clean-targets:
+  - target
+  - dbt_packages
+
+# Architecture médaillon : chaque couche dans son propre schéma PostgreSQL.
+# Le nom final du schéma est calculé par la macro generate_schema_name (macros/).
+models:
+  ecoshop:
+    staging:          # Silver : nettoyage, typage, renommage (1 modèle par table source)
+      +schema: staging
+      +materialized: view
+    intermediate:     # Silver : jointures et règles métier réutilisables
+      +schema: intermediate
+      +materialized: view
+    marts:            # Gold : modèle en étoile exposé à Lightdash
+      +schema: marts
+      +materialized: table
+
+seeds:
+  ecoshop:
+    +schema: seeds
