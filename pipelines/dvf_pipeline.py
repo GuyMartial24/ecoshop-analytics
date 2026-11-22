@@ -1,17 +1,10 @@
-"""Pipeline dlt : Demandes de Valeurs Foncières géolocalisées (DVF) -> schéma raw_dvf.
+"""Ingestion des Demandes de Valeurs Foncières (DVF) dans le schéma raw_dvf.
 
-Source : https://files.data.gouv.fr/geo-dvf/ (Etalab, licence ouverte).
-Un fichier CSV compressé par année et par département, republié chaque semestre.
+Source : https://files.data.gouv.fr/geo-dvf/ (un fichier par année et par
+département, republié chaque semestre).
+Années et départements : section [sources.dvf] de .dlt/config.toml.
 
-Principes :
-- années et départements paramétrables dans .dlt/config.toml (section [sources.dvf]) ;
-- typage explicite des colonnes (un CSV ne porte aucun type) ;
-- incrémental par fichier : un fichier inchangé depuis le dernier run n'est pas retéléchargé ;
-- remplacement par partition : si un fichier a été republié, ses anciennes lignes
-  sont supprimées puis remplacées (stratégie merge "delete-insert" sur la colonne `fichier`).
-
-Usage (depuis la racine du projet) :
-    uv run python pipelines/dvf_pipeline.py
+Lancement : uv run python pipelines/dvf_pipeline.py
 """
 
 import gzip
@@ -20,13 +13,15 @@ import io
 import dlt
 import pyarrow as pa
 import pyarrow.csv as pacsv
-from dlt.sources.helpers import requests  # requests avec reprises automatiques
+from dlt.sources.helpers import requests
 
-URL_FICHIER = "https://files.data.gouv.fr/geo-dvf/latest/csv/{annee}/departements/{departement}.csv.gz"
+FILE_URL = (
+    "https://files.data.gouv.fr/geo-dvf/latest/csv/"
+    "{year}/departements/{department}.csv.gz"
+)
 
-# Colonnes non textuelles. Toutes les autres restent du texte, en particulier les
-# codes (code_postal, code_commune, id_parcelle...) dont les zéros initiaux comptent.
-TYPES_NUMERIQUES = {
+# Colonnes typées ; les autres restent en texte (codes avec zéros initiaux)
+NUMERIC_TYPES = {
     "date_mutation": pa.date32(),
     "valeur_fonciere": pa.float64(),
     "lot1_surface_carrez": pa.float64(),
@@ -43,14 +38,16 @@ TYPES_NUMERIQUES = {
 }
 
 
-def lire_csv_dvf(contenu_gz: bytes) -> pa.Table:
-    """Décompresse et lit un fichier DVF avec des types explicites."""
-    contenu = gzip.decompress(contenu_gz)
-    entete = contenu.split(b"\n", 1)[0].decode("utf-8").strip().split(",")
-    types = {colonne: TYPES_NUMERIQUES.get(colonne, pa.string()) for colonne in entete}
+def read_dvf_csv(gz_content: bytes) -> pa.Table:
+    """Décompresse et lit un fichier DVF avec les types attendus."""
+    content = gzip.decompress(gz_content)
+    header = content.split(b"\n", 1)[0].decode("utf-8").strip().split(",")
+    types = {col: NUMERIC_TYPES.get(col, pa.string()) for col in header}
     return pacsv.read_csv(
-        io.BytesIO(contenu),
-        convert_options=pacsv.ConvertOptions(column_types=types, strings_can_be_null=True),
+        io.BytesIO(content),
+        convert_options=pacsv.ConvertOptions(
+            column_types=types, strings_can_be_null=True
+        ),
     )
 
 
@@ -59,60 +56,58 @@ def dvf_source(
     annees: list[int] = dlt.config.value,
     departements: list[str] = dlt.config.value,
 ):
-    """Les paramètres sont injectés depuis .dlt/config.toml -> [sources.dvf]."""
-
     @dlt.resource(
         name="mutations",
-        write_disposition={"disposition": "merge", "strategy": "delete-insert"},
+        write_disposition={
+            "disposition": "merge",
+            "strategy": "delete-insert",
+        },
         merge_key="fichier",
     )
     def mutations():
-        # État propre à la ressource, sauvegardé par dlt dans la destination
-        fichiers_charges = dlt.current.resource_state().setdefault("fichiers_charges", {})
+        # Version (Last-Modified) de chaque fichier déjà chargé
+        loaded_files = dlt.current.resource_state().setdefault(
+            "fichiers_charges", {}
+        )
 
-        for annee in annees:
-            for departement in departements:
-                fichier = f"{annee}/{departement}"
-                url = URL_FICHIER.format(annee=annee, departement=departement)
+        for year in annees:
+            for department in departements:
+                file_key = f"{year}/{department}"
+                url = FILE_URL.format(year=year, department=department)
 
-                # 1. Le fichier a-t-il changé depuis le dernier chargement ?
-                entete_http = requests.head(url, allow_redirects=True, timeout=30)
-                entete_http.raise_for_status()
-                version = entete_http.headers.get("Last-Modified")
-                if fichiers_charges.get(fichier) == version:
-                    print(f"  {fichier} : inchangé ({version}), ignoré")
+                head = requests.head(url, allow_redirects=True, timeout=30)
+                head.raise_for_status()
+                version = head.headers.get("Last-Modified")
+                if loaded_files.get(file_key) == version:
+                    print(f"  {file_key} : inchangé ({version}), ignoré")
                     continue
 
-                # 2. Téléchargement et lecture typée
-                reponse = requests.get(url, timeout=120)
-                reponse.raise_for_status()
-                table = lire_csv_dvf(reponse.content)
+                response = requests.get(url, timeout=120)
+                response.raise_for_status()
+                table = read_dvf_csv(response.content)
 
-                # 3. Colonnes techniques : partition de remplacement et traçabilité.
-                #    Déclarées non nullables : `fichier` est la merge_key, que dlt exige non nulle.
-                nb_lignes = table.num_rows
-                colonnes_techniques = [
-                    ("annee", pa.int16(), annee),
-                    ("fichier", pa.string(), fichier),
+                # `fichier` est la merge_key : non nullable
+                nb_rows = table.num_rows
+                extra_columns = [
+                    ("annee", pa.int16(), year),
+                    ("fichier", pa.string(), file_key),
                     ("version_fichier", pa.string(), version),
                 ]
-                for nom, type_arrow, valeur in colonnes_techniques:
+                for name, arrow_type, value in extra_columns:
                     table = table.append_column(
-                        pa.field(nom, type_arrow, nullable=False),
-                        pa.array([valeur] * nb_lignes, type_arrow),
+                        pa.field(name, arrow_type, nullable=False),
+                        pa.array([value] * nb_rows, arrow_type),
                     )
 
-                print(f"  {fichier} : {nb_lignes} lignes ({version})")
+                print(f"  {file_key} : {nb_rows} lignes ({version})")
                 yield table
 
-                # 4. Mémorisation (persistée uniquement si le chargement réussit)
-                fichiers_charges[fichier] = version
+                loaded_files[file_key] = version
 
     return mutations
 
 
 def run():
-    """Lance le chargement et renvoie le rapport de chargement (LoadInfo)."""
     pipeline = dlt.pipeline(
         pipeline_name="dvf",
         destination="postgres",
