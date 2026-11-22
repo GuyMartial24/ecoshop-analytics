@@ -14,12 +14,14 @@ Usage (depuis la racine du projet) :
     uv run python scripts/slack_alerts.py            # envoie une alerte s'il y a des anomalies
     uv run python scripts/slack_alerts.py --apercu   # affiche le message sans l'envoyer
     uv run python scripts/slack_alerts.py --toujours # envoie aussi un message si tout est OK
+    uv run python scripts/slack_alerts.py --depuis 2026-11-22T02:00:00+00:00
+                                                     # agrège les exécutions depuis cette date
 """
 
 import argparse
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import psycopg2
@@ -74,27 +76,40 @@ def derniere_execution(curseur):
     return curseur.fetchone()
 
 
-def resultats_tests(curseur, invocation_id):
+def resultats_tests(curseur, invocation_id=None, depuis=None):
+    """Résultats de tests d'une exécution dbt, ou de toutes les exécutions depuis une date.
+
+    Le second cas sert à Airflow : avec Cosmos, chaque modèle dbt est une exécution
+    séparée, il faut donc agréger tous les résultats du run.
+    """
+    filtre, parametre = (
+        ("invocation_id = %s", invocation_id) if depuis is None else ("detected_at >= %s", depuis)
+    )
     curseur.execute(
-        """
+        f"""
         select status, test_short_name, test_type, schema_name, table_name,
                column_name, failures
         from elementary.elementary_test_results
-        where invocation_id = %s
+        where {filtre}
         """,
-        (invocation_id,),
+        (parametre,),
     )
     return curseur.fetchall()
 
 
-def modeles_en_erreur(curseur, invocation_id):
+def modeles_en_erreur(curseur, invocation_id=None, depuis=None):
+    filtre, parametre = (
+        ("invocation_id = %s", invocation_id)
+        if depuis is None
+        else ("generated_at::timestamp >= %s", depuis)
+    )
     curseur.execute(
-        """
+        f"""
         select name, resource_type, message
         from elementary.dbt_run_results
-        where invocation_id = %s and status = 'error'
+        where {filtre} and status = 'error'
         """,
-        (invocation_id,),
+        (parametre,),
     )
     return curseur.fetchall()
 
@@ -107,19 +122,15 @@ def libelle_test(test_short_name, test_type):
     return test_short_name
 
 
-def construire_message(execution, resultats, erreurs):
-    invocation_id, commande, genere_le = execution
-    if isinstance(genere_le, str):
-        genere_le = datetime.fromisoformat(genere_le)
-    date = genere_le.strftime("%d/%m/%Y à %H:%M") + " (UTC)"
-
+def construire_message(contexte, resultats, erreurs):
+    """contexte : phrase décrivant le périmètre (exécution dbt ou run Airflow)."""
     anomalies = [r for r in resultats if r[0] in STATUTS]
     nb = {statut: sum(1 for r in anomalies if r[0] == statut) for statut in STATUTS}
     gravite = "ÉCHEC" if (nb["fail"] or nb["error"] or erreurs) else "AVERTISSEMENT"
 
     lignes = [
         f"*Contrôle qualité des données EcoShop : {gravite if anomalies or erreurs else 'OK'}*",
-        f"Exécution `dbt {commande}` du {date}",
+        contexte,
         (
             f"{len(resultats)} tests exécutés : {nb['fail'] + nb['error']} en échec, "
             f"{nb['warn']} en avertissement."
@@ -157,19 +168,35 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Alertes qualité des données en français sur Slack.")
     parser.add_argument("--apercu", action="store_true", help="affiche le message sans l'envoyer")
     parser.add_argument("--toujours", action="store_true", help="envoie un message même si tout est OK")
+    parser.add_argument(
+        "--depuis",
+        help="date ISO 8601 : agrège toutes les exécutions dbt depuis cette date (utilisé par Airflow)",
+    )
     args = parser.parse_args()
 
+    # Les variables déjà définies (ex. dans le conteneur Airflow) restent prioritaires
     load_dotenv(PROJECT_ROOT / ".env")
 
     with connexion() as conn, conn.cursor() as curseur:
-        execution = derniere_execution(curseur)
-        if execution is None:
-            print("Aucune exécution dbt enregistrée par Elementary.")
-            return 0
-        resultats = resultats_tests(curseur, execution[0])
-        erreurs = modeles_en_erreur(curseur, execution[0])
+        if args.depuis:
+            # Elementary stocke des dates UTC sans fuseau horaire
+            depuis = datetime.fromisoformat(args.depuis).astimezone(timezone.utc).replace(tzinfo=None)
+            resultats = resultats_tests(curseur, depuis=depuis)
+            erreurs = modeles_en_erreur(curseur, depuis=depuis)
+            contexte = f"Pipeline quotidien démarré le {depuis:%d/%m/%Y à %H:%M} (UTC)"
+        else:
+            execution = derniere_execution(curseur)
+            if execution is None:
+                print("Aucune exécution dbt enregistrée par Elementary.")
+                return 0
+            invocation_id, commande, genere_le = execution
+            if isinstance(genere_le, str):
+                genere_le = datetime.fromisoformat(genere_le)
+            resultats = resultats_tests(curseur, invocation_id=invocation_id)
+            erreurs = modeles_en_erreur(curseur, invocation_id=invocation_id)
+            contexte = f"Exécution `dbt {commande}` du {genere_le:%d/%m/%Y à %H:%M} (UTC)"
 
-    message, a_signaler = construire_message(execution, resultats, erreurs)
+    message, a_signaler = construire_message(contexte, resultats, erreurs)
 
     if args.apercu:
         print(message)
