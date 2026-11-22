@@ -1,0 +1,44 @@
+version: 2
+
+sources:
+  - name: geo
+    description: >
+      Référentiel géographique officiel (API Géo, geo.api.gouv.fr), chargé par dlt
+      (pipelines/geo_pipeline.py) dans le schéma raw_geo.
+    schema: raw_geo
+
+    tables:
+      - name: regions
+        columns:
+          - name: code
+            data_tests:
+              - unique
+              - not_null
+
+      - name: departements
+        columns:
+          - name: code
+            data_tests:
+              - unique
+              - not_null
+
+      - name: communes
+        description: Communes actuelles et arrondissements municipaux (Paris, Lyon, Marseille).
+        columns:
+          - name: code
+            description: Code INSEE de la commune ou de l'arrondissement.
+            data_tests:
+              - unique
+              - not_null
+
+      - name: communes__codes_postaux
+        description: Codes postaux d'une commune (une ligne par code), liés par _dlt_parent_id.
+
+      - name: _dlt_loads
+        description: Journal des chargements dlt.
+        config:
+          # Référentiel peu changeant : un rafraîchissement mensuel suffit
+          loaded_at_field: inserted_at
+          freshness:
+            warn_after: {count: 30, period: day}
+            error_after: {count: 90, period: day}

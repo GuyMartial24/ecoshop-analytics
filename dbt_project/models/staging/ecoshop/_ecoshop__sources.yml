@@ -1,0 +1,54 @@
+version: 2
+
+sources:
+  - name: ecoshop
+    description: >
+      Back-office e-commerce d'EcoShop (simulé), chargé par dlt
+      (pipelines/ecoshop_pipeline.py) dans le schéma raw_ecoshop.
+    schema: raw_ecoshop
+
+    tables:
+      - name: customers
+        description: Clients dans leur état courant (merge sur customer_id).
+        columns:
+          - name: customer_id
+            description: Identifiant unique du client.
+            data_tests:
+              - unique
+              - not_null
+
+      - name: products
+        description: Catalogue produits (rechargé intégralement à chaque run).
+        columns:
+          - name: product_id
+            data_tests:
+              - unique
+              - not_null
+
+      - name: orders
+        description: En-têtes de commande dans leur dernier statut (merge sur order_id).
+        config:
+          # Fraîcheur métier : une boutique en ligne reçoit des commandes chaque jour
+          loaded_at_field: updated_at
+          freshness:
+            warn_after: {count: 1, period: day}
+            error_after: {count: 3, period: day}
+        columns:
+          - name: order_id
+            data_tests:
+              - unique
+              - not_null
+
+      - name: orders__items
+        description: >
+          Lignes de commande, issues de la normalisation par dlt de la liste
+          imbriquée `items` (rattachées à la commande par _dlt_parent_id).
+
+      - name: _dlt_loads
+        description: Journal des chargements dlt (un enregistrement par run réussi).
+        config:
+          # Fraîcheur technique : le pipeline a-t-il tourné récemment ?
+          loaded_at_field: inserted_at
+          freshness:
+            warn_after: {count: 1, period: day}
+            error_after: {count: 2, period: day}

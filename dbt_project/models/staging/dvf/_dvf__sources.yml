@@ -1,0 +1,33 @@
+version: 2
+
+sources:
+  - name: dvf
+    description: >
+      Demandes de Valeurs Foncières géolocalisées (Etalab, data.gouv.fr), chargées par dlt
+      (pipelines/dvf_pipeline.py) dans le schéma raw_dvf. Une ligne par lot ou local :
+      une même mutation (vente) peut donc occuper plusieurs lignes.
+    schema: raw_dvf
+
+    tables:
+      - name: mutations
+        description: >
+          Lignes DVF brutes. Attention : valeur_fonciere est répétée sur chaque ligne
+          d'une même mutation et ne doit pas être sommée telle quelle.
+        config:
+          # DVF est publié chaque semestre avec environ 6 mois de décalage :
+          # la mutation la plus récente a donc normalement moins d'un an.
+          loaded_at_field: date_mutation::timestamp
+          freshness:
+            warn_after: {count: 365, period: day}
+            error_after: {count: 548, period: day}
+        columns:
+          - name: id_mutation
+            data_tests:
+              - not_null
+          - name: fichier
+            description: Partition de chargement (année/département), clé de remplacement dlt.
+            data_tests:
+              - not_null
+
+      - name: _dlt_loads
+        description: Journal des chargements dlt.
