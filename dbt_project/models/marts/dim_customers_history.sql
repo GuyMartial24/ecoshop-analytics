@@ -1,8 +1,5 @@
--- Dimension client historisée (SCD2) : 1 ligne = 1 version d'un client
---
--- Construite sur le snapshot snap_customers. Chaque version porte le segment et la
--- commune du client sur sa période de validité [valid_from, valid_to[.
--- Sert aux jointures temporelles : rattacher un fait à l'état du client à sa date.
+-- Historique des clients (SCD2) : 1 ligne par version,
+-- valide sur [valid_from, valid_to[.
 
 with versions as (
 

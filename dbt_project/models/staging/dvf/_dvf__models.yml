@@ -18,7 +18,7 @@ models:
               arguments:
                 values:
                   - "Vente"
-                  # Apostrophes doublées : la valeur est injectée telle quelle dans le SQL du test
+                  # apostrophes doublées pour le SQL
                   - "Vente en l''état futur d''achèvement"
                   - "Echange"
                   - "Adjudication"
@@ -33,6 +33,6 @@ models:
                 to: ref('stg_geo__communes')
                 field: commune_code
               config:
-                severity: warn   # des communes fusionnées peuvent avoir disparu du référentiel
+                severity: warn   # communes ayant changé de code
       - name: is_dwelling
         description: Vrai pour les appartements et les maisons (base du prix au m²).

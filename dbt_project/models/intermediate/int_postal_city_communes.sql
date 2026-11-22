@@ -1,13 +1,6 @@
--- Résolution d'une adresse (code postal, ville) vers sa commune officielle
--- (1 ligne = 1 couple code postal / ville connu)
---
--- Couvre les adresses actuelles (staging) et passées (snapshot), pour géolocaliser
--- aussi bien l'état courant des clients que leur historique.
--- Un code postal pouvant correspondre à plusieurs communes (ex. 75011 = Paris et
--- Paris 11e Arrondissement), on retient la meilleure candidate, dans cet ordre :
---   1. le nom de la commune commence par la ville saisie ;
---   2. l'arrondissement plutôt que la commune entière (plus précis, cohérent avec DVF) ;
---   3. la commune la plus peuplée.
+-- Commune de chaque adresse client (code postal, ville), actuelle ou passée.
+-- Si plusieurs communes partagent le code postal, priorité :
+-- nom qui correspond à la ville, puis arrondissement, puis population.
 
 with addresses as (
 

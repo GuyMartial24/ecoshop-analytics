@@ -3,11 +3,9 @@ version: 2
 seeds:
   - name: order_status_mapping
     description: >
-      Référentiel des statuts de commande, maintenu à la main et versionné avec le code.
-      Il porte les règles de gestion : quels statuts comptent dans le chiffre d'affaires
-      et lesquels sont définitifs.
+      Statuts de commande : libellé, statuts comptés dans le CA et
+      statuts définitifs.
     config:
-      # Types explicites : sans eux, dbt les devine à partir du contenu du CSV
       column_types:
         order_status: varchar(20)
         order_status_label: varchar(50)

@@ -9,14 +9,10 @@ snapshots:
     config:
       schema: snapshots
       unique_key: customer_id
-      # Stratégie timestamp : une version est créée quand updated_at change.
-      # (Alternative : strategy check, qui compare une liste de colonnes.)
       strategy: timestamp
       updated_at: updated_at
-      # Date de fin "infinie" pour la version courante plutôt que NULL :
-      # simplifie les jointures temporelles (between dbt_valid_from and dbt_valid_to)
+      # Fin de validité de la version courante (plutôt que NULL)
       dbt_valid_to_current: "'9999-12-31 00:00:00+00'::timestamptz"
-      # Un client supprimé à la source voit sa dernière version clôturée
       hard_deletes: invalidate
     data_tests:
       - dbt_utils.unique_combination_of_columns:

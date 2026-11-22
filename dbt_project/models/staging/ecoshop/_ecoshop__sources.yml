@@ -28,7 +28,6 @@ sources:
       - name: orders
         description: En-têtes de commande dans leur dernier statut (merge sur order_id).
         config:
-          # Fraîcheur métier : une boutique en ligne reçoit des commandes chaque jour
           loaded_at_field: updated_at
           freshness:
             warn_after: {count: 1, period: day}
@@ -47,7 +46,7 @@ sources:
       - name: _dlt_loads
         description: Journal des chargements dlt (un enregistrement par run réussi).
         config:
-          # Fraîcheur technique : le pipeline a-t-il tourné récemment ?
+          # Dernier chargement dlt
           loaded_at_field: inserted_at
           freshness:
             warn_after: {count: 1, period: day}

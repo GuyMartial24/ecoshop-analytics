@@ -1,7 +1,4 @@
--- Surveillance : part des commandes du CA vendues à perte.
---
--- Une part élevée signale une politique de remise trop agressive. Ce n'est pas une
--- erreur de données : le test est en avertissement (severity: warn) et non bloquant.
+-- Part des commandes du CA vendues à perte : alerte au-delà de 10 %.
 
 {{ config(severity='warn') }}
 

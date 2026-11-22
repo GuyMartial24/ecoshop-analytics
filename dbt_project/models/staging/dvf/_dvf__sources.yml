@@ -11,11 +11,10 @@ sources:
     tables:
       - name: mutations
         description: >
-          Lignes DVF brutes. Attention : valeur_fonciere est répétée sur chaque ligne
-          d'une même mutation et ne doit pas être sommée telle quelle.
+          Lignes DVF brutes. valeur_fonciere est répétée sur chaque ligne
+          d'une même mutation.
         config:
-          # DVF est publié chaque semestre avec environ 6 mois de décalage :
-          # la mutation la plus récente a donc normalement moins d'un an.
+          # Publication semestrielle, environ 6 mois de décalage
           loaded_at_field: date_mutation::timestamp
           freshness:
             warn_after: {count: 365, period: day}

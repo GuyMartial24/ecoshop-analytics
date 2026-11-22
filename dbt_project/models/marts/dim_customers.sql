@@ -1,8 +1,5 @@
--- Dimension client (1 ligne = 1 client, état courant)
---
--- Minimisation des données (RGPD) : l'email et le nom de famille ne sont pas exposés
--- dans la couche BI ; seuls le prénom et l'initiale du nom sont conservés.
--- Les indicateurs de cycle de vie ne portent que sur les commandes comptées dans le CA.
+-- Dimension client (état courant). Pas d'email ni de nom complet.
+-- Indicateurs calculés sur les commandes comptées dans le CA.
 
 with customers as (
 
