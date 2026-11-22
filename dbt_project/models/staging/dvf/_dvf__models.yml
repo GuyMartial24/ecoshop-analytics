@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: stg_dvf__mutations
+    description: >
+      Lignes DVF renommées et typées, au grain lot/local. Le prix (property_value)
+      est celui de la mutation entière et se répète sur chaque ligne de la mutation.
+    columns:
+      - name: mutation_id
+        data_tests:
+          - not_null
+      - name: mutation_date
+        data_tests:
+          - not_null
+      - name: mutation_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - "Vente"
+                  # Apostrophes doublées : la valeur est injectée telle quelle dans le SQL du test
+                  - "Vente en l''état futur d''achèvement"
+                  - "Echange"
+                  - "Adjudication"
+                  - "Vente terrain à bâtir"
+                  - "Expropriation"
+      - name: commune_code
+        description: Code INSEE (arrondissement pour Paris et Lyon).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_geo__communes')
+                field: commune_code
+              config:
+                severity: warn   # des communes fusionnées peuvent avoir disparu du référentiel
+      - name: is_dwelling
+        description: Vrai pour les appartements et les maisons (base du prix au m²).

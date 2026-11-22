@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  - name: stg_ecoshop__customers
+    description: Clients nettoyés (emails normalisés), dans leur état courant.
+    columns:
+      - name: customer_id
+        description: Identifiant unique du client.
+        data_tests:
+          - unique
+          - not_null
+      - name: email
+        description: Email en minuscules, sans espaces parasites.
+        data_tests:
+          - not_null
+      - name: customer_segment
+        description: Segment de fidélité courant.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Standard", "Premium", "VIP"]
+
+  - name: stg_ecoshop__orders
+    description: Commandes dans leur dernier statut connu.
+    columns:
+      - name: order_id
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_ecoshop__customers')
+                field: customer_id
+      - name: order_status
+        description: Statut courant ; la liste des valeurs autorisées est le seed order_status_mapping.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('order_status_mapping')
+                field: order_status
+
+  - name: stg_ecoshop__order_items
+    description: Lignes de commande rattachées à leur commande par la clé métier order_id.
+    columns:
+      - name: order_item_id
+        description: Clé technique de la ligne (order_id + numéro de ligne).
+        data_tests:
+          - unique
+          - not_null
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_ecoshop__orders')
+                field: order_id
+      - name: product_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_ecoshop__products')
+                field: product_id
+
+  - name: stg_ecoshop__products
+    description: Catalogue produits avec prix catalogue et coût unitaire.
+    columns:
+      - name: product_id
+        data_tests:
+          - unique
+          - not_null
