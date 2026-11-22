@@ -80,10 +80,11 @@ identifiants du `.env`, lus par `profiles.yml` via `env_var()` (aucun secret ver
 ```bash
 cd dbt_project
 
-uv run --env-file ../.env dbt deps              # installe les packages (dbt_utils)
+uv run --env-file ../.env dbt deps              # installe les packages (dbt_utils, elementary)
 uv run --env-file ../.env dbt debug             # vérifie la connexion
 uv run --env-file ../.env dbt source freshness  # contrôle la fraîcheur des sources
-uv run --env-file ../.env dbt build             # seeds, modèles et tests dans l'ordre du DAG
+uv run --env-file ../.env dbt build             # seeds, modèles, snapshots et tests dans l'ordre du DAG
+uv run --env-file ../.env dbt test --select "test_type:unit"   # tests unitaires seuls
 uv run --env-file ../.env dbt docs generate     # documentation et lignage
 uv run --env-file ../.env dbt docs serve --port 8081
 ```
@@ -91,6 +92,7 @@ uv run --env-file ../.env dbt docs serve --port 8081
 | Couche | Schéma | Matérialisation | Rôle |
 |---|---|---|---|
 | Seeds | `seeds` | table | Référentiels maintenus à la main (statuts de commande) |
+| Snapshots | `snapshots` | snapshot (SCD2) | Historique des clients (segment, adresse) |
 | Staging | `staging` | view | Nettoyage, typage, renommage : un modèle par table source |
 | Intermediate | `intermediate` | view / ephemeral | Jointures, calculs et règles métier réutilisables |
 | Marts | `marts` | table | Modèle en étoile exposé à Lightdash |
@@ -100,9 +102,10 @@ uv run --env-file ../.env dbt docs serve --port 8081
 | Modèle | Grain | Contenu |
 |---|---|---|
 | `dim_customers` | 1 client | Segment, commune, indicateurs de cycle de vie (sans donnée personnelle directe) |
+| `dim_customers_history` | 1 version de client | Historique SCD2 : segment et commune sur chaque période de validité |
 | `dim_products` | 1 produit | Prix TTC et HT, coût, marge unitaire |
 | `dim_communes` | 1 commune | Département, région, population, coordonnées GPS |
-| `fct_orders` | 1 commande | Montants TTC et HT, remise, coût, marge ; contrat de modèle appliqué |
+| `fct_orders` | 1 commande | Montants, marge, segment et commune du client à la date de la commande ; incrémental (merge) et contrat appliqué |
 | `fct_order_items` | 1 article | Détail par produit et catégorie |
 | `fct_dvf_sales` | 1 vente immobilière | Prix, surface, prix au m² des ventes de référence |
 
@@ -114,6 +117,37 @@ bornes (variables `dvf_min_price_per_m2` et `dvf_max_price_per_m2`) sont signal�
 Les schémas sont nommés par la macro `generate_schema_name` : noms simples en `dev` et
 `prod`, préfixés en CI (ex. `ci_pr_12_staging`) pour isoler chaque exécution.
 
+### Historique des clients
+
+Le snapshot `snap_customers` historise les changements de segment et d'adresse. Pour
+reconstituer l'historique depuis le début des données en développement, le script
+`pipelines/replay_history.py` repart d'un schéma brut vide et rejoue la source mois par
+mois (ingestion puis snapshot). Il efface `raw_ecoshop` : il ne doit jamais être lancé
+en production, où l'historique s'accumule à chaque exécution quotidienne.
+
+## Qualité des données
+
+| Type de test | Exemples |
+|---|---|
+| Génériques | `unique`, `not_null`, `accepted_values`, `relationships` |
+| Packages | `dbt_utils.expression_is_true`, `accepted_range`, `unique_combination_of_columns` |
+| Générique personnalisé | `positive_value` (prix, coûts, quantités, prix au m²) |
+| Singuliers | Pas de vente à perte sans remise ; part des commandes à perte sous 10 % ; continuité de l'historique SCD2 |
+| Unitaires | Calcul des montants et de la marge ; grain vente et prix au m² DVF |
+| Anomalies (Elementary) | Volume de commandes par jour comparé aux 30 jours précédents |
+
+Observabilité : le package Elementary enregistre le résultat de chaque exécution dans le
+schéma `elementary`. Les alertes sont publiées en français sur Slack par un script dédié
+(le webhook est lu dans `SLACK_WEBHOOK_URL`, variable du `.env`) :
+
+```bash
+uv run python scripts/slack_alerts.py --apercu   # affiche le message sans l'envoyer
+uv run python scripts/slack_alerts.py            # envoie une alerte en cas d'anomalie
+
+cd dbt_project
+uv run --env-file ../.env edr report --project-dir . --profiles-dir .   # rapport HTML
+```
+
 ## Structure du dépôt
 
 ```
@@ -124,16 +158,21 @@ Les schémas sont nommés par la macro `generate_schema_name` : noms simples en 
 │   ├── ecoshop_pipeline.py   # Source 1 : e-commerce -> raw_ecoshop
 │   ├── geo_pipeline.py       # Source 2 : API Géo -> raw_geo
 │   ├── dvf_pipeline.py       # Source 3 : DVF -> raw_dvf
-│   └── run_all.py            # Point d'entrée unique de l'ingestion
+│   ├── run_all.py            # Point d'entrée unique de l'ingestion
+│   └── replay_history.py     # Rejeu de l'historique (développement uniquement)
+├── scripts/
+│   └── slack_alerts.py       # Alertes qualité en français sur Slack
 └── dbt_project/
-    ├── dbt_project.yml       # Couches, schémas et matérialisations
-    ├── profiles.yml          # Connexions dev / ci / prod (variables d'environnement)
-    ├── packages.yml          # dbt_utils (version figée dans package-lock.yml)
-    ├── macros/               # generate_schema_name, macros financières
+    ├── dbt_project.yml       # Couches, schémas, matérialisations et variables
+    ├── profiles.yml          # Connexions dev / ci / prod / elementary (variables d'environnement)
+    ├── packages.yml          # dbt_utils, elementary (versions figées dans package-lock.yml)
+    ├── macros/               # generate_schema_name, macros financières, surcharge snapshot
     ├── seeds/                # order_status_mapping.csv
+    ├── snapshots/            # snap_customers (SCD2)
+    ├── tests/                # tests singuliers et test générique positive_value
     └── models/
         ├── staging/          # ecoshop/, geo/, dvf/ : sources, modèles et tests
-        ├── intermediate/     # valorisation, géolocalisation, ventes DVF
+        ├── intermediate/     # valorisation, géolocalisation, ventes DVF, tests unitaires
         └── marts/            # dimensions et faits exposés à Lightdash
 ```
 
@@ -144,7 +183,7 @@ Les schémas sont nommés par la macro `generate_schema_name` : noms simples en 
 - [x] Étape 2 : ingestion dlt (3 sources)
 - [x] Étape 3 : fondations dbt (sources, fraîcheur, staging, seed, tests)
 - [x] Étape 4 : modélisation métier (packages, macros, intermediate, marts en étoile, contrat)
-- [ ] Étape 5 : dbt avancé (incrémental, snapshots SCD2, tests singuliers et unitaires, Elementary)
+- [x] Étape 5 : dbt avancé (snapshot SCD2, incrémental, tests singuliers et unitaires, Elementary, alertes Slack)
 - [ ] Étape 6 : orchestration Airflow + Cosmos
 - [ ] Étape 7 : couche sémantique et dashboards Lightdash
 - [ ] Étape 8 : CI/CD GitHub Actions

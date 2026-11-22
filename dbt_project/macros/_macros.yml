@@ -6,6 +6,11 @@ macros:
       Nomme les schémas selon la couche (staging, marts...) : noms simples en dev et
       en prod, préfixés par le schéma du target en CI pour isoler chaque exécution.
 
+  - name: postgres__snapshot_get_time
+    description: >
+      Surcharge (via adapter.dispatch) de l'horodatage utilisé par les snapshots :
+      renvoie un timestamptz, cohérent avec les colonnes updated_at des sources.
+
   - name: net_amount
     description: Montant d'une ligne après remise (quantité x prix unitaire x (1 - taux de remise)), arrondi au centime.
     arguments:

@@ -18,6 +18,7 @@ vars:
   vat_rate: 0.20                # TVA française au taux normal (prix catalogue exprimés TTC)
   dvf_min_price_per_m2: 1000    # en dessous : vente atypique (donation déguisée, erreur de saisie...)
   dvf_max_price_per_m2: 25000   # au-dessus : vente atypique (lot mal renseigné, bien d'exception...)
+  orders_lookback_days: 3       # fenêtre de sécurité du modèle incrémental fct_orders
 
 # Architecture médaillon : chaque couche dans son propre schéma PostgreSQL.
 # Le nom final du schéma est calculé par la macro generate_schema_name (macros/).
@@ -33,6 +34,17 @@ models:
       +schema: marts
       +materialized: table
 
+  # Tables d'observabilité du package Elementary, dans leur propre schéma
+  elementary:
+    +schema: elementary
+
 seeds:
   ecoshop:
     +schema: seeds
+
+# Réglages requis par Elementary : ses matérialisations enrichissent celles de dbt
+# pour collecter les résultats des tests, et ses hooks tournent aussi lors de
+# `dbt source freshness`.
+flags:
+  require_explicit_package_overrides_for_builtin_materializations: false
+  source_freshness_run_project_hooks: true

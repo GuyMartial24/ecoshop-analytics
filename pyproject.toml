@@ -6,6 +6,10 @@ requires-python = ">=3.12"
 dependencies = [
     "dbt-postgres>=1.11.0",
     "dlt[postgres]>=1.32.0",
+    "elementary-data[postgres]>=0.26.1",
     "faker>=40.63.0",
+    "psycopg2-binary>=2.9.13",
     "pyarrow>=26.0.1",
+    "python-dotenv>=1.2.4",
+    "requests>=2.34.2",
 ]

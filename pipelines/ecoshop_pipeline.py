@@ -2,13 +2,26 @@
 
 Usage (depuis la racine du projet) :
     uv run python pipelines/ecoshop_pipeline.py
+
+La variable d'environnement ECOSHOP_SIMULATED_NOW (date ISO 8601) permet de faire
+tourner le simulateur à une date passée ; elle sert uniquement au rejeu de
+l'historique (pipelines/replay_history.py).
 """
 
+import os
 from datetime import datetime, timezone
 
 import dlt
 
 from fake_data import START_DATE, generate_customers, generate_orders, generate_products
+
+
+def current_time() -> datetime:
+    """Date de référence du simulateur : maintenant, ou la date simulée si elle est définie."""
+    simulated_now = os.environ.get("ECOSHOP_SIMULATED_NOW")
+    if simulated_now:
+        return datetime.fromisoformat(simulated_now)
+    return datetime.now(timezone.utc)
 
 
 @dlt.resource(name="products", write_disposition="replace")
@@ -26,7 +39,7 @@ def customers(
     La source renvoie tous les clients ; dlt écarte lui-même ceux dont
     updated_at n'a pas bougé depuis le dernier chargement (filtrage côté dlt).
     """
-    yield from generate_customers(now=datetime.now(timezone.utc))
+    yield from generate_customers(now=current_time())
 
 
 @dlt.resource(name="orders", write_disposition="merge", primary_key="order_id")
@@ -40,7 +53,7 @@ def orders(
     """
     yield from generate_orders(
         updated_since=updated_at.last_value,
-        now=datetime.now(timezone.utc),
+        now=current_time(),
     )
 
 

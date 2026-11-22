@@ -36,3 +36,17 @@ ecoshop:
       dbname: "{{ env_var('WAREHOUSE_DB') }}"
       schema: analytics
       threads: 4
+
+# Profil lu par la CLI Elementary (edr) : même entrepôt, schéma des tables d'observabilité
+elementary:
+  target: default
+  outputs:
+    default:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_PORT', env_var('WAREHOUSE_PORT', '5433')) | as_number }}"
+      user: "{{ env_var('WAREHOUSE_USER') }}"
+      password: "{{ env_var('WAREHOUSE_PASSWORD') }}"
+      dbname: "{{ env_var('WAREHOUSE_DB') }}"
+      schema: elementary
+      threads: 4

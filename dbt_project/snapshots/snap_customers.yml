@@ -1,0 +1,28 @@
+snapshots:
+  - name: snap_customers
+    description: >
+      Historique des clients (SCD de type 2) : une ligne par version d'un client.
+      Une nouvelle version est créée à chaque changement de segment ou d'adresse.
+      dbt_valid_from / dbt_valid_to bornent la période de validité de chaque version ;
+      la version courante a dbt_valid_to = 9999-12-31.
+    relation: ref('stg_ecoshop__customers')
+    config:
+      schema: snapshots
+      unique_key: customer_id
+      # Stratégie timestamp : une version est créée quand updated_at change.
+      # (Alternative : strategy check, qui compare une liste de colonnes.)
+      strategy: timestamp
+      updated_at: updated_at
+      # Date de fin "infinie" pour la version courante plutôt que NULL :
+      # simplifie les jointures temporelles (between dbt_valid_from and dbt_valid_to)
+      dbt_valid_to_current: "'9999-12-31 00:00:00+00'::timestamptz"
+      # Un client supprimé à la source voit sa dernière version clôturée
+      hard_deletes: invalidate
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [customer_id, dbt_valid_from]
+    columns:
+      - name: customer_id
+        data_tests:
+          - not_null
