@@ -1,0 +1,52 @@
+chartConfig:
+  config:
+    conditionalFormattings: []
+    eChartsConfig:
+      series:
+        - encode:
+            xRef:
+              field: fct_orders_customer_segment_at_order
+            yRef:
+              field: fct_orders_revenue_incl_vat
+          isFilteredOut: false
+          type: bar
+          yAxisIndex: 0
+      showAxisTicks: false
+    layout:
+      flipAxes: false
+      showIncompletePeriod: true
+      xField: fct_orders_customer_segment_at_order
+      yField:
+        - fct_orders_revenue_incl_vat
+  type: cartesian
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >-
+  CA TTC selon le segment du client au moment de la commande (Standard, Premium,
+  VIP)
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - fct_orders_customer_segment_at_order
+  exploreName: fct_orders
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_orders_revenue_incl_vat
+  sorts:
+    - descending: true
+      fieldId: fct_orders_revenue_incl_vat
+  tableCalculations: []
+  timezone: project_timezone
+name: CA par segment
+slug: ca-par-segment
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_orders_customer_segment_at_order
+    - fct_orders_revenue_incl_vat
+tableName: fct_orders
+verification: null
+version: 1

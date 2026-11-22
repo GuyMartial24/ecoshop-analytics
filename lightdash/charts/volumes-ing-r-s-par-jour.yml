@@ -1,0 +1,71 @@
+chartConfig:
+  config:
+    conditionalFormattings: []
+    eChartsConfig:
+      series:
+        - color: "#2C7BB6"
+          encode:
+            xRef:
+              field: fct_pipeline_loads_load_date_day
+            yRef:
+              field: fct_pipeline_loads_total_orders_rows
+          isFilteredOut: false
+          type: bar
+          yAxisIndex: 0
+        - color: "#ABD9E9"
+          encode:
+            xRef:
+              field: fct_pipeline_loads_load_date_day
+            yRef:
+              field: fct_pipeline_loads_total_customers_rows
+          isFilteredOut: false
+          type: bar
+          yAxisIndex: 0
+      showAxisTicks: false
+    layout:
+      flipAxes: false
+      showIncompletePeriod: true
+      xField: fct_pipeline_loads_load_date_day
+      yField:
+        - fct_pipeline_loads_total_orders_rows
+        - fct_pipeline_loads_total_customers_rows
+  type: cartesian
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >
+  Nombre de commandes et de clients chargés chaque jour depuis le back-office :
+  un creux inhabituel signale un problème d'ingestion.
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - fct_pipeline_loads_load_date_day
+    - fct_pipeline_loads_customers_rows
+    - fct_pipeline_loads_pipeline
+  exploreName: fct_pipeline_loads
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_pipeline_loads_total_orders_rows
+    - fct_pipeline_loads_total_customers_rows
+  sorts:
+    - descending: true
+      fieldId: fct_pipeline_loads_load_date_day
+  tableCalculations: []
+  timezone: project_timezone
+name: Volumes ingérés par jour
+pivotConfig:
+  columns: []
+slug: volumes-ing-r-s-par-jour
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_pipeline_loads_load_date_day
+    - fct_pipeline_loads_customers_rows
+    - fct_pipeline_loads_pipeline
+    - fct_pipeline_loads_total_orders_rows
+    - fct_pipeline_loads_total_customers_rows
+tableName: fct_pipeline_loads
+verification: null
+version: 1

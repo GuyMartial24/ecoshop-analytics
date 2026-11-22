@@ -1,0 +1,55 @@
+chartConfig:
+  config:
+    columns: {}
+    conditionalFormattings: []
+    hideRowNumbers: false
+    metricsAsRows: false
+    showColumnCalculation: false
+    showResultsTotal: false
+    showRowCalculation: false
+    showRowGrouping: false
+    showSubtotals: false
+    showSubtotalsExpanded: false
+    showTableNames: false
+  type: table
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >
+  Date et heure du dernier chargement de chaque source (back-office, API Géo,
+  DVF) : permet de vérifier que l'ingestion quotidienne a bien tourné.
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - fct_pipeline_loads_pipeline
+  exploreName: fct_pipeline_loads
+  filters:
+    dimensions:
+      and:
+        - id: 9d4d9777-f036-4f83-9fc0-a24fea313d86
+          operator: equals
+          required: false
+          target:
+            fieldId: fct_pipeline_loads_is_success
+          values:
+            - true
+      id: 6b701130-a51c-43d3-84a5-8ab643372503
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_pipeline_loads_last_load_at
+  sorts:
+    - descending: false
+      fieldId: fct_pipeline_loads_pipeline
+  tableCalculations: []
+  timezone: project_timezone
+name: Dernier chargement
+slug: dernier-chargement
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_pipeline_loads_pipeline
+    - fct_pipeline_loads_last_load_at
+tableName: fct_pipeline_loads
+verification: null
+version: 1

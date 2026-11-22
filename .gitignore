@@ -29,3 +29,6 @@ Thumbs.db
 # Elementary (rapports générés par la CLI edr)
 edr_target/
 dbt_project/edr_target/
+
+# Lightdash (métadonnées locales de la CLI)
+lightdash/.lightdash-metadata.json

@@ -1,0 +1,79 @@
+chartConfig:
+  config:
+    columns: {}
+    conditionalFormattings:
+      - color: "#FDAE61"
+        rules:
+          - id: 71eae453-1db4-4c36-acc1-0052f080f52c
+            operator: equals
+            values:
+              - warn
+        target:
+          fieldId: fct_data_quality_tests_status
+      - color: "#D7191C"
+        rules:
+          - id: 67cc4bae-af67-4c5f-a3e8-1c893cdafcd8
+            operator: equals
+            values: []
+        target:
+          fieldId: fct_data_quality_tests_failures
+    hideRowNumbers: false
+    metricsAsRows: false
+    showColumnCalculation: false
+    showResultsTotal: false
+    showRowCalculation: false
+    showRowGrouping: false
+    showSubtotals: false
+    showSubtotalsExpanded: false
+    showTableNames: false
+  type: table
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >-
+  Tests de qualité en échec ou en avertissement, avec la table, la colonne et le
+  nombre de lignes concernées, du plus récent au plus ancien.
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - fct_data_quality_tests_detected_at_hour
+    - fct_data_quality_tests_test_name
+    - fct_data_quality_tests_table_name
+    - fct_data_quality_tests_column_name
+    - fct_data_quality_tests_status
+    - fct_data_quality_tests_failures
+  exploreName: fct_data_quality_tests
+  filters:
+    dimensions:
+      and:
+        - id: cbdbee7c-2572-4a5f-aeaa-e952a185e104
+          operator: equals
+          required: false
+          target:
+            fieldId: fct_data_quality_tests_status
+          values:
+            - warn
+            - pass
+      id: 30aa2b42-57d7-4490-ab47-fb54d7797e24
+  limit: 500
+  metricOverrides: {}
+  metrics: []
+  sorts:
+    - descending: false
+      fieldId: fct_data_quality_tests_detected_at_hour
+  tableCalculations: []
+  timezone: project_timezone
+name: Tests en anomalie
+slug: tests-en-anomalie
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_data_quality_tests_detected_at_hour
+    - fct_data_quality_tests_test_name
+    - fct_data_quality_tests_table_name
+    - fct_data_quality_tests_column_name
+    - fct_data_quality_tests_status
+    - fct_data_quality_tests_failures
+tableName: fct_data_quality_tests
+verification: null
+version: 1

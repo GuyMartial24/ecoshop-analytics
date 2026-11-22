@@ -1,0 +1,97 @@
+chartConfig:
+  config:
+    conditionalFormattings: []
+    eChartsConfig:
+      series:
+        - color: "#2C7BB6"
+          encode:
+            xRef:
+              field: fct_dvf_sales_department_code
+            yRef:
+              field: fct_dvf_sales_median_price_per_m2
+              pivotValues:
+                - field: fct_dvf_sales_sale_category
+                  value: Appartement
+          isFilteredOut: false
+          label:
+            position: top
+            show: true
+            showOverlappingLabels: false
+          type: bar
+          yAxisIndex: 0
+        - color: "#FDAE61"
+          encode:
+            xRef:
+              field: fct_dvf_sales_department_code
+            yRef:
+              field: fct_dvf_sales_median_price_per_m2
+              pivotValues:
+                - field: fct_dvf_sales_sale_category
+                  value: Maison
+          isFilteredOut: false
+          label:
+            position: top
+            show: true
+            showOverlappingLabels: false
+          type: bar
+          yAxisIndex: 0
+      showAxisTicks: false
+    layout:
+      colorByCategory: false
+      flipAxes: false
+      showIncompletePeriod: true
+      stack: none
+      xField: fct_dvf_sales_department_code
+      yField:
+        - fct_dvf_sales_median_price_per_m2
+    metadata:
+      fct_dvf_sales_median_price_per_m2.Appartement:
+        color: "#2C7BB6"
+      fct_dvf_sales_median_price_per_m2.Maison:
+        color: "#FDAE61"
+  type: cartesian
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: Prix médian au m² par département et par type de bien (appartement ou maison
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - fct_dvf_sales_department_code
+    - fct_dvf_sales_sale_category
+  exploreName: fct_dvf_sales
+  filters:
+    dimensions:
+      and:
+        - id: 04f6f361-4b0a-44af-a42a-31451b736488
+          operator: equals
+          required: false
+          target:
+            fieldId: fct_dvf_sales_sale_category
+          values:
+            - Appartement
+            - Maison
+      id: f1a88ea0-e794-4168-b125-1804980051e6
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_dvf_sales_median_price_per_m2
+  sorts:
+    - descending: false
+      fieldId: fct_dvf_sales_department_code
+  tableCalculations: []
+  timezone: project_timezone
+name: Prix au m² par département
+pivotConfig:
+  columns:
+    - fct_dvf_sales_sale_category
+slug: prix-au-m-par-d-partement
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_dvf_sales_department_code
+    - fct_dvf_sales_sale_category
+    - fct_dvf_sales_median_price_per_m2
+tableName: fct_dvf_sales
+verification: null
+version: 1

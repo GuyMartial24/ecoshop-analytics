@@ -1,0 +1,39 @@
+chartConfig:
+  config:
+    comparisonFormat: raw
+    conditionalFormattings: []
+    flipColors: false
+    selectedField: dim_customers_avg_order_count
+    showBigNumberLabel: true
+    showComparison: false
+    showTableNamesInLabel: false
+  type: big_number
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >
+  Nombre moyen de commandes expédiées ou livrées par client, sur l'ensemble de
+  l'historique.
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions: []
+  exploreName: dim_customers
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - dim_customers_avg_order_count
+  sorts:
+    - descending: true
+      fieldId: dim_customers_avg_order_count
+  tableCalculations: []
+  timezone: project_timezone
+name: Commandes par client
+slug: commandes-par-client
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - dim_customers_avg_order_count
+tableName: dim_customers
+verification: null
+version: 1

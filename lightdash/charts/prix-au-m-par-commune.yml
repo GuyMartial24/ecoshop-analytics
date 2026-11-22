@@ -1,0 +1,68 @@
+chartConfig:
+  config:
+    colorOverrides: {}
+    colorRange:
+      - "#2C7BB6"
+      - "#FFFFBF"
+      - "#D7191C"
+    dataLayerOpacity: 0.8
+    defaultCenterLat: 46.51245235953424
+    defaultCenterLon: 1.933627885414895
+    defaultZoom: 6
+    fieldConfig: {}
+    latitudeFieldId: dim_communes_latitude
+    locationType: scatter
+    longitudeFieldId: dim_communes_longitude
+    mapType: world
+    maxBubbleSize: 25
+    minBubbleSize: 5
+    saveMapExtent: true
+    showLegend: true
+    sizeFieldId: fct_dvf_sales_sale_count
+    tileBackground: openstreetmap
+    valueFieldId: fct_dvf_sales_median_price_per_m2
+  type: map
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: " Prix médian au m² des appartements et maisons vendus seuls, hors prix aberrants, dans les communes d'au moins 20 ventes (source DVF)"
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - dim_communes_commune_name
+    - dim_communes_latitude
+    - dim_communes_longitude
+  exploreName: fct_dvf_sales
+  filters:
+    metrics:
+      and:
+        - id: c3b49790-78ec-4580-a324-99fbf8e80679
+          operator: greaterThanOrEqual
+          target:
+            fieldId: fct_dvf_sales_sale_count
+          values:
+            - 20
+      id: f0754d43-feb5-4b5b-88e2-6481eff77e76
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_dvf_sales_median_price_per_m2
+    - fct_dvf_sales_sale_count
+  sorts:
+    - descending: false
+      fieldId: dim_communes_commune_name
+  tableCalculations: []
+  timezone: project_timezone
+name: Prix au m² par commune
+slug: prix-au-m-par-commune
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - dim_communes_commune_name
+    - dim_communes_latitude
+    - dim_communes_longitude
+    - fct_dvf_sales_median_price_per_m2
+    - fct_dvf_sales_sale_count
+tableName: fct_dvf_sales
+verification: null
+version: 1

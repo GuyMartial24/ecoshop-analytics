@@ -1,0 +1,53 @@
+chartConfig:
+  config:
+    conditionalFormattings: []
+    eChartsConfig:
+      series:
+        - color: "#2C7BB6"
+          encode:
+            xRef:
+              field: dim_customers_order_count
+            yRef:
+              field: dim_customers_customer_count
+          isFilteredOut: false
+          type: bar
+          yAxisIndex: 0
+      showAxisTicks: false
+    layout:
+      flipAxes: false
+      showIncompletePeriod: true
+      xField: dim_customers_order_count
+      yField:
+        - dim_customers_customer_count
+  type: cartesian
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >
+  Nombre de clients selon leur nombre de commandes expédiées ou livrées : mesure
+  la fidélité et la fréquence d'achat.
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - dim_customers_order_count
+  exploreName: dim_customers
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - dim_customers_customer_count
+  sorts:
+    - descending: false
+      fieldId: dim_customers_order_count
+  tableCalculations: []
+  timezone: project_timezone
+name: Répartition du nombre de commandes
+slug: r-partition-du-nombre-de-commandes
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - dim_customers_order_count
+    - dim_customers_customer_count
+tableName: dim_customers
+verification: null
+version: 1

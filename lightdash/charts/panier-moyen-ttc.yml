@@ -1,0 +1,37 @@
+chartConfig:
+  config:
+    comparisonFormat: raw
+    conditionalFormattings: []
+    flipColors: false
+    selectedField: fct_orders_average_basket
+    showBigNumberLabel: true
+    showComparison: false
+    showTableNamesInLabel: false
+  type: big_number
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: "\tMontant TTC moyen d'une commande expédiée ou livrée"
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions: []
+  exploreName: fct_orders
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_orders_average_basket
+  sorts:
+    - descending: true
+      fieldId: fct_orders_average_basket
+  tableCalculations: []
+  timezone: project_timezone
+name: Panier moyen TTC
+slug: panier-moyen-ttc
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_orders_average_basket
+tableName: fct_orders
+verification: null
+version: 1

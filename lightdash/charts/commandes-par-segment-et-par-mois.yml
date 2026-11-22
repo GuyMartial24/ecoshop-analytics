@@ -1,0 +1,96 @@
+chartConfig:
+  config:
+    conditionalFormattings: []
+    eChartsConfig:
+      series:
+        - color: "#2C7BB6"
+          encode:
+            xRef:
+              field: fct_orders_order_date_month
+            yRef:
+              field: fct_orders_revenue_order_count
+              pivotValues:
+                - field: fct_orders_customer_segment_at_order
+                  value: Premium
+          isFilteredOut: false
+          stack: fct_orders_revenue_order_count
+          type: bar
+          yAxisIndex: 0
+        - color: "#ABD9E9"
+          encode:
+            xRef:
+              field: fct_orders_order_date_month
+            yRef:
+              field: fct_orders_revenue_order_count
+              pivotValues:
+                - field: fct_orders_customer_segment_at_order
+                  value: Standard
+          isFilteredOut: false
+          stack: fct_orders_revenue_order_count
+          type: bar
+          yAxisIndex: 0
+        - color: "#FDAE61"
+          encode:
+            xRef:
+              field: fct_orders_order_date_month
+            yRef:
+              field: fct_orders_revenue_order_count
+              pivotValues:
+                - field: fct_orders_customer_segment_at_order
+                  value: VIP
+          isFilteredOut: false
+          stack: fct_orders_revenue_order_count
+          type: bar
+          yAxisIndex: 0
+      showAxisTicks: false
+    layout:
+      flipAxes: false
+      showIncompletePeriod: true
+      stack: stack
+      xField: fct_orders_order_date_month
+      yField:
+        - fct_orders_revenue_order_count
+    metadata:
+      fct_orders_revenue_order_count.Premium:
+        color: "#2C7BB6"
+      fct_orders_revenue_order_count.Standard:
+        color: "#ABD9E9"
+      fct_orders_revenue_order_count.VIP:
+        color: "#FDAE61"
+  type: cartesian
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >
+  Évolution mensuelle des commandes expédiées ou livrées, réparties selon le
+  segment du client au moment de l'achat (Standard, Premium, VIP).
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - fct_orders_order_date_month
+    - fct_orders_customer_segment_at_order
+  exploreName: fct_orders
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_orders_revenue_order_count
+  sorts:
+    - descending: true
+      fieldId: fct_orders_order_date_month
+  tableCalculations: []
+  timezone: project_timezone
+name: Commandes par segment et par mois
+pivotConfig:
+  columns:
+    - fct_orders_customer_segment_at_order
+slug: commandes-par-segment-et-par-mois
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_orders_order_date_month
+    - fct_orders_customer_segment_at_order
+    - fct_orders_revenue_order_count
+tableName: fct_orders
+verification: null
+version: 1

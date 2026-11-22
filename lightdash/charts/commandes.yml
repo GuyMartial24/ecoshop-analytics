@@ -1,0 +1,39 @@
+chartConfig:
+  config:
+    comparisonFormat: raw
+    conditionalFormattings: []
+    flipColors: false
+    selectedField: fct_orders_revenue_order_count
+    showBigNumberLabel: true
+    showComparison: false
+    showTableNamesInLabel: false
+  type: big_number
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >-
+  Nombre de commandes expédiées ou livrées (hors commandes en attente, annulées
+  ou retournées)
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions: []
+  exploreName: fct_orders
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_orders_revenue_order_count
+  sorts:
+    - descending: true
+      fieldId: fct_orders_revenue_order_count
+  tableCalculations: []
+  timezone: project_timezone
+name: Commandes
+slug: commandes
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_orders_revenue_order_count
+tableName: fct_orders
+verification: null
+version: 1

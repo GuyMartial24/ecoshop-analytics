@@ -1,0 +1,62 @@
+chartConfig:
+  config:
+    columns: {}
+    conditionalFormattings: []
+    hideRowNumbers: false
+    metricsAsRows: false
+    showColumnCalculation: false
+    showResultsTotal: false
+    showRowCalculation: false
+    showRowGrouping: false
+    showSubtotals: false
+    showSubtotalsExpanded: false
+    showTableNames: false
+  type: table
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >
+  Les 10 clients au chiffre d'affaires cumulé le plus élevé (commandes expédiées
+  ou livrées), avec leur segment actuel et leur nombre de commandes.
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - dim_customers_customer_display_name
+    - dim_customers_customer_segment
+    - dim_customers_order_count
+  exploreName: dim_customers
+  filters:
+    metrics:
+      and:
+        - id: 7db01f96-f12d-4769-9329-544285f2ecb9
+          operator: equals
+          target:
+            fieldId: dim_customers_total_lifetime_revenue
+          values: []
+        - id: 34b3a432-38e4-4c0c-8538-56316276e114
+          operator: equals
+          target:
+            fieldId: dim_customers_total_lifetime_revenue
+          values: []
+      id: 59204870-3dfa-42b4-882e-fe3a3cfcab56
+  limit: 10
+  metricOverrides: {}
+  metrics:
+    - dim_customers_total_lifetime_revenue
+  sorts:
+    - descending: true
+      fieldId: dim_customers_total_lifetime_revenue
+  tableCalculations: []
+  timezone: project_timezone
+name: Top 10 clients
+slug: top-10-clients
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - dim_customers_customer_display_name
+    - dim_customers_customer_segment
+    - dim_customers_order_count
+    - dim_customers_total_lifetime_revenue
+tableName: dim_customers
+verification: null
+version: 1

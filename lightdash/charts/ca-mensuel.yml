@@ -1,0 +1,64 @@
+chartConfig:
+  config:
+    conditionalFormattings: []
+    eChartsConfig:
+      series:
+        - encode:
+            xRef:
+              field: fct_orders_order_date_month
+            yRef:
+              field: fct_orders_revenue_incl_vat
+          isFilteredOut: false
+          type: line
+          yAxisIndex: 0
+        - encode:
+            xRef:
+              field: fct_orders_order_date_month
+            yRef:
+              field: fct_orders_margin
+          isFilteredOut: false
+          type: line
+          yAxisIndex: 0
+      showAxisTicks: false
+    layout:
+      flipAxes: false
+      showIncompletePeriod: true
+      stack: none
+      xField: fct_orders_order_date_month
+      yField:
+        - fct_orders_revenue_incl_vat
+        - fct_orders_margin
+  type: cartesian
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >-
+  Évolution mensuelle du CA TTC et de la marge, avec la variation par rapport au
+  mois précédent
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - fct_orders_order_date_month
+  exploreName: fct_orders
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_orders_revenue_incl_vat
+    - fct_orders_margin
+  sorts:
+    - descending: true
+      fieldId: fct_orders_order_date_month
+  tableCalculations: []
+  timezone: project_timezone
+name: CA mensuel
+slug: ca-mensuel
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - fct_orders_order_date_month
+    - fct_orders_revenue_incl_vat
+    - fct_orders_margin
+tableName: fct_orders
+verification: null
+version: 1
