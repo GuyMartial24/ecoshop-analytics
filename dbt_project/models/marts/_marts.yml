@@ -26,6 +26,18 @@ models:
         data_tests:
           - unique
           - not_null
+      - name: list_price_incl_vat
+        data_tests:
+          - positive_value
+      - name: unit_cost
+        data_tests:
+          - positive_value
+      - name: unit_margin
+        description: Marge unitaire au prix catalogue (HT - coût) ; aucun produit n'est vendu à perte hors remise.
+        data_tests:
+          - positive_value:
+              arguments:
+                allow_zero: true
 
   - name: dim_customers
     description: >
@@ -183,6 +195,9 @@ models:
               arguments:
                 to: ref('dim_products')
                 field: product_id
+      - name: quantity
+        data_tests:
+          - positive_value
 
   - name: fct_dvf_sales
     description: >
@@ -202,3 +217,10 @@ models:
                 field: commune_code
               config:
                 severity: warn   # communes ayant changé de code depuis la vente
+      - name: price_per_m2
+        data_tests:
+          # Les cessions symboliques (ex. 1 euro pour 300 m²) arrondissent à 0 : elles
+          # sont déjà signalées comme valeurs aberrantes et exclues de ce contrôle
+          - positive_value:
+              config:
+                where: "not is_price_outlier"

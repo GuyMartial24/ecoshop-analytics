@@ -1,0 +1,54 @@
+# Tests unitaires dbt : ils valident la LOGIQUE d'un modèle sur de petites données
+# d'exemple écrites à la main (given), en comparant le résultat obtenu au résultat
+# attendu (expect). Contrairement aux tests de données, ils ne dépendent pas du contenu
+# réel de la base : ils protègent les règles de calcul contre les régressions.
+#
+# Lancement : dbt test --select "test_type:unit"
+
+unit_tests:
+
+  - name: int_order_items_enriched__calcule_montants_et_marge
+    description: >
+      Vérifie la chaîne de calcul d'une ligne : montant brut TTC, remise, net TTC,
+      net HT (TVA à 20 %), coût et marge sur le HT. Cas avec et sans remise.
+    model: int_order_items_enriched
+    given:
+      - input: ref('stg_ecoshop__order_items')
+        rows:
+          - {order_item_id: "A-1", order_id: "A", line_number: 1, product_id: 1, quantity: 2, unit_price: 60.00, discount_rate: 0.10}
+          - {order_item_id: "A-2", order_id: "A", line_number: 2, product_id: 1, quantity: 1, unit_price: 60.00, discount_rate: 0}
+      - input: ref('stg_ecoshop__products')
+        rows:
+          - {product_id: 1, product_category: "Maison", list_price: 60.00, unit_cost: 30.00}
+    expect:
+      rows:
+        # 2 x 60 = 120 TTC ; remise 10 % -> 108 TTC -> 90 HT ; coût 60 ; marge 30
+        - {order_item_id: "A-1", gross_amount_incl_vat: "120.00", discount_amount: "12.00", net_amount_incl_vat: "108.00", net_amount_excl_vat: "90.00", cost_amount: "60.00", margin_amount: "30.00"}
+        # 1 x 60 = 60 TTC ; sans remise -> 50 HT ; coût 30 ; marge 20
+        - {order_item_id: "A-2", gross_amount_incl_vat: "60.00", discount_amount: "0.00", net_amount_incl_vat: "60.00", net_amount_excl_vat: "50.00", cost_amount: "30.00", margin_amount: "20.00"}
+
+  - name: int_dvf_sales__grain_vente_et_prix_m2
+    description: >
+      Vérifie le passage du grain ligne au grain vente (prix non multiplié), la
+      catégorisation des biens, la sélection des ventes de référence et le calcul du
+      prix au m² avec détection des valeurs hors bornes.
+    model: int_dvf_sales
+    given:
+      - input: ref('stg_dvf__mutations')
+        rows:
+          # M1 : appartement + cave, prix répété sur les 2 lignes -> 1 vente de référence
+          - {mutation_id: "M1", mutation_date: "2025-03-01", mutation_type: "Vente", property_value: 300000, commune_code: "75111", department_code: "75", property_type: "Appartement", is_dwelling: true, built_area_m2: 30, room_count: 2}
+          - {mutation_id: "M1", mutation_date: "2025-03-01", mutation_type: "Vente", property_value: 300000, commune_code: "75111", department_code: "75", property_type: "Dépendance", is_dwelling: false}
+          # M2 : deux appartements vendus ensemble -> pas de prix au m² (surface ambiguë)
+          - {mutation_id: "M2", mutation_date: "2025-04-01", mutation_type: "Vente", property_value: 500000, commune_code: "69383", department_code: "69", property_type: "Appartement", is_dwelling: true, built_area_m2: 40, room_count: 2}
+          - {mutation_id: "M2", mutation_date: "2025-04-01", mutation_type: "Vente", property_value: 500000, commune_code: "69383", department_code: "69", property_type: "Appartement", is_dwelling: true, built_area_m2: 35, room_count: 1}
+          # M3 : maison obtenue par échange -> pas une vente de référence
+          - {mutation_id: "M3", mutation_date: "2025-05-01", mutation_type: "Echange", property_value: 200000, commune_code: "33063", department_code: "33", property_type: "Maison", is_dwelling: true, built_area_m2: 100, room_count: 4}
+          # M4 : maison à 100 euros le m² -> vente de référence mais hors bornes
+          - {mutation_id: "M4", mutation_date: "2025-06-01", mutation_type: "Vente", property_value: 10000, commune_code: "33063", department_code: "33", property_type: "Maison", is_dwelling: true, built_area_m2: 100, room_count: 4}
+    expect:
+      rows:
+        - {mutation_id: "M1", line_count: 2, property_value: "300000.00", sale_category: "Appartement", is_reference_sale: true, price_per_m2: "10000.00", is_price_outlier: false}
+        - {mutation_id: "M2", line_count: 2, property_value: "500000.00", sale_category: "Plusieurs logements", is_reference_sale: false, price_per_m2: null, is_price_outlier: false}
+        - {mutation_id: "M3", line_count: 1, property_value: "200000.00", sale_category: "Maison", is_reference_sale: false, price_per_m2: null, is_price_outlier: false}
+        - {mutation_id: "M4", line_count: 1, property_value: "10000.00", sale_category: "Maison", is_reference_sale: true, price_per_m2: "100.00", is_price_outlier: true}
