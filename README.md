@@ -1,13 +1,13 @@
-#  EcoShop Analytics
+# EcoShop Analytics
 > Plateforme analytique e-commerce & immobilière (DVF) — dlt · dbt · PostgreSQL · Lightdash
 
-## 🎯 Objectif
+## Objectif
 
 Projet d'Analytics Engineering de bout en bout : ingestion de trois sources (un back-office
 e-commerce simulé, le référentiel géographique officiel et les transactions immobilières
 réelles DVF), transformation avec dbt et restitution dans des dashboards Lightdash.
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 [Back-office simulé]   [API Géo]            [DVF data.gouv.fr]
@@ -22,7 +22,7 @@ réelles DVF), transformation avec dbt et restitution dans des dashboards Lightd
                 Lightdash (Docker) → dashboards
 ```
 
-## 🧰 Stack technique
+## Stack technique
 
 | Rôle | Outil |
 |---|---|
@@ -33,7 +33,7 @@ réelles DVF), transformation avec dbt et restitution dans des dashboards Lightd
 | Orchestration | Airflow + Cosmos (à venir) |
 | Infra | Docker Compose, GitHub Actions, VPS |
 
-## 📥 Sources de données
+## Sources de données
 
 | Source | Type | Schéma | Stratégie de chargement |
 |---|---|---|---|
@@ -43,7 +43,7 @@ réelles DVF), transformation avec dbt et restitution dans des dashboards Lightd
 
 Les années et départements DVF se règlent dans `.dlt/config.toml` (section `[sources.dvf]`).
 
-## 🚀 Démarrage rapide
+## Démarrage rapide
 
 Prérequis : Docker Desktop, Python 3.12 et [uv](https://docs.astral.sh/uv/).
 
@@ -71,7 +71,7 @@ uv run python pipelines/run_all.py
 
 Lightdash est ensuite accessible sur http://localhost:8080.
 
-## 📁 Structure du dépôt
+## Structure du dépôt
 
 ```
 ├── docker-compose.yml        # Stack locale (PostgreSQL, Lightdash, S3)
@@ -84,7 +84,7 @@ Lightdash est ensuite accessible sur http://localhost:8080.
     └── run_all.py            # Point d'entrée unique de l'ingestion
 ```
 
-## 🗺️ Avancement
+## Avancement
 
 - [x] Étape 0 : initialisation du dépôt
 - [x] Étape 1 : stack Docker locale
