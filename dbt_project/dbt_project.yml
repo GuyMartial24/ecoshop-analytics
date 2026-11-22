@@ -34,6 +34,17 @@ models:
       +schema: marts
       +materialized: table
 
+  # Tables d'observabilité du package Elementary, dans leur propre schéma
+  elementary:
+    +schema: elementary
+
 seeds:
   ecoshop:
     +schema: seeds
+
+# Réglages requis par Elementary : ses matérialisations enrichissent celles de dbt
+# pour collecter les résultats des tests, et ses hooks tournent aussi lors de
+# `dbt source freshness`.
+flags:
+  require_explicit_package_overrides_for_builtin_materializations: false
+  source_freshness_run_project_hooks: true

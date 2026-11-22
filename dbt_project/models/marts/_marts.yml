@@ -100,6 +100,18 @@ models:
     constraints:
       - type: primary_key
         columns: [order_id]
+    data_tests:
+      # Détection d'anomalie (Elementary) : le nombre de commandes par jour des 2
+      # derniers jours est comparé à la tendance des 30 jours précédents. Un écart
+      # statistiquement anormal (chute ou pic) déclenche un avertissement.
+      - elementary.volume_anomalies:
+          arguments:
+            timestamp_column: ordered_at
+            time_bucket: {period: day, count: 1}
+            training_period: {period: day, count: 30}
+            detection_period: {period: day, count: 2}
+          config:
+            severity: warn
     columns:
       - name: order_id
         data_type: varchar

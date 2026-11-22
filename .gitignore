@@ -25,3 +25,7 @@ data/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Elementary (rapports générés par la CLI edr)
+edr_target/
+dbt_project/edr_target/
