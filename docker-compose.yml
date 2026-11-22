@@ -70,7 +70,7 @@ services:
 
   # Outil de BI : lit les modèles Gold (marts) produits par dbt
   lightdash:
-    image: lightdash/lightdash:3.361.0 
+    image: lightdash/lightdash:3.361.0
     container_name: ecoshop-lightdash
     restart: unless-stopped
     depends_on:
