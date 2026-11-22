@@ -1,0 +1,27 @@
+version: 2
+
+macros:
+  - name: generate_schema_name
+    description: >
+      Nomme les schémas selon la couche (staging, marts...) : noms simples en dev et
+      en prod, préfixés par le schéma du target en CI pour isoler chaque exécution.
+
+  - name: net_amount
+    description: Montant d'une ligne après remise (quantité x prix unitaire x (1 - taux de remise)), arrondi au centime.
+    arguments:
+      - name: quantity
+        type: string
+      - name: unit_price
+        type: string
+      - name: discount_rate
+        type: string
+        description: Taux de remise entre 0 et 1 ; une valeur nulle est traitée comme 0.
+
+  - name: amount_excl_vat
+    description: Convertit un montant TTC en HT, arrondi au centime.
+    arguments:
+      - name: amount_incl_vat
+        type: string
+      - name: vat_rate
+        type: string
+        description: Taux de TVA ; par défaut la variable de projet vat_rate (0.20).

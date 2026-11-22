@@ -18,6 +18,9 @@ communes as (
 renamed as (
 
     select
+        -- Clé de substitution : hachage stable de la clé composite (dbt_utils)
+        {{ dbt_utils.generate_surrogate_key(['communes.code', 'postal_codes.value']) }}
+                                        as commune_postal_code_id,
         communes.code                   as commune_code,
         postal_codes.value              as postal_code
 
