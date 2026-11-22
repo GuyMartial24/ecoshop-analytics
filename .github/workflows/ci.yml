@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Qualité du code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.9"
+
+      - name: Installation des dépendances
+        run: uv sync --frozen
+
+      - name: ruff check
+        run: uv run ruff check .
+
+      - name: ruff format
+        run: uv run ruff format --check .
+
+  dbt:
+    name: Ingestion et dbt build
+    runs-on: ubuntu-latest
+    needs: lint
+
+    # Base PostgreSQL vide, créée pour ce run puis supprimée
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ecoshop
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: ecoshop_dw
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ecoshop -d ecoshop_dw"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      WAREHOUSE_USER: ecoshop
+      WAREHOUSE_PASSWORD: ci_password
+      WAREHOUSE_DB: ecoshop_dw
+      DBT_HOST: localhost
+      DBT_PORT: "5432"
+      # Schémas préfixés par le numéro de PR (macro generate_schema_name)
+      DBT_CI_SCHEMA: >-
+        ${{ github.event_name == 'pull_request'
+            && format('ci_pr_{0}', github.event.pull_request.number)
+            || format('ci_run_{0}', github.run_number) }}
+      # dlt
+      DESTINATION__POSTGRES__CREDENTIALS__HOST: localhost
+      DESTINATION__POSTGRES__CREDENTIALS__PORT: "5432"
+      DESTINATION__POSTGRES__CREDENTIALS__DATABASE: ecoshop_dw
+      DESTINATION__POSTGRES__CREDENTIALS__USERNAME: ecoshop
+      DESTINATION__POSTGRES__CREDENTIALS__PASSWORD: ci_password
+      # Un seul fichier DVF en CI pour aller plus vite
+      SOURCES__DVF__ANNEES: "[2025]"
+      SOURCES__DVF__DEPARTEMENTS: '["75"]'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.9"
+
+      - name: Installation des dépendances
+        run: uv sync --frozen
+
+      - name: Ingestion des trois sources (dlt)
+        run: uv run python pipelines/run_all.py
+
+      - name: dbt deps
+        working-directory: dbt_project
+        run: uv run dbt deps
+
+      - name: dbt build
+        working-directory: dbt_project
+        run: uv run dbt build --target ci
+
+      - name: dbt source freshness
+        working-directory: dbt_project
+        run: uv run dbt source freshness --target ci
+
+      - name: Artefacts dbt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-artefacts
+          path: |
+            dbt_project/target/manifest.json
+            dbt_project/target/run_results.json
+            dbt_project/target/sources.json
+          if-no-files-found: ignore
+
+  notify:
+    name: Alerte Slack
+    runs-on: ubuntu-latest
+    needs: [lint, dbt]
+    if: failure()
+    env:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+    steps:
+      - name: Message d'échec
+        if: env.SLACK_WEBHOOK_URL != ''
+        run: |
+          python3 - <<'EOF'
+          import json
+          import os
+          import urllib.request
+
+          env = os.environ
+          branch = env.get("GITHUB_HEAD_REF") or env["GITHUB_REF_NAME"]
+          run_url = (
+              f"{env['GITHUB_SERVER_URL']}/{env['GITHUB_REPOSITORY']}"
+              f"/actions/runs/{env['GITHUB_RUN_ID']}"
+          )
+          message = "\n".join(
+              [
+                  "*Échec de la CI EcoShop*",
+                  f"Branche : `{branch}` ({env['GITHUB_EVENT_NAME']})",
+                  f"Commit : `{env['GITHUB_SHA'][:7]}`",
+                  f"Détails : {run_url}",
+              ]
+          )
+          request = urllib.request.Request(
+              env["SLACK_WEBHOOK_URL"],
+              data=json.dumps({"text": message}).encode(),
+              headers={"Content-Type": "application/json"},
+          )
+          urllib.request.urlopen(request, timeout=30)
+          EOF
