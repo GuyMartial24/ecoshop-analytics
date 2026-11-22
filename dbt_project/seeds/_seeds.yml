@@ -1,0 +1,30 @@
+version: 2
+
+seeds:
+  - name: order_status_mapping
+    description: >
+      Référentiel des statuts de commande, maintenu à la main et versionné avec le code.
+      Il porte les règles de gestion : quels statuts comptent dans le chiffre d'affaires
+      et lesquels sont définitifs.
+    config:
+      # Types explicites : sans eux, dbt les devine à partir du contenu du CSV
+      column_types:
+        order_status: varchar(20)
+        order_status_label: varchar(50)
+        status_rank: integer
+        is_revenue: boolean
+        is_final: boolean
+    columns:
+      - name: order_status
+        description: Code du statut tel qu'il arrive du back-office.
+        data_tests:
+          - unique
+          - not_null
+      - name: order_status_label
+        description: Libellé français affiché dans les dashboards.
+      - name: status_rank
+        description: Ordre d'affichage du statut dans le cycle de vie de la commande.
+      - name: is_revenue
+        description: Vrai si la commande est comptée dans le chiffre d'affaires (expédiée ou livrée).
+      - name: is_final
+        description: Vrai si le statut ne peut plus évoluer (livrée, retournée, annulée).

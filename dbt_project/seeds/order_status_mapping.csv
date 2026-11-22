@@ -1,0 +1,6 @@
+order_status,order_status_label,status_rank,is_revenue,is_final
+pending,En attente,1,false,false
+shipped,Expédiée,2,true,false
+delivered,Livrée,3,true,true
+returned,Retournée,4,false,true
+cancelled,Annulée,5,false,true
