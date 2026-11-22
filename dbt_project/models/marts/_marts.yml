@@ -228,7 +228,7 @@ models:
             metrics:
               total_lifetime_revenue:
                 type: sum
-                label: CA cumulé TTC
+                label: CA cumulé TTC (total)
                 format: eur
                 round: 0
       - name: lifetime_margin
@@ -930,7 +930,7 @@ models:
         config:
           meta:
             dimension:
-              label: Commandes chargées
+              hidden: true
             metrics:
               total_orders_rows:
                 type: sum
@@ -939,7 +939,7 @@ models:
         config:
           meta:
             dimension:
-              label: Clients chargés
+              hidden: true
             metrics:
               total_customers_rows:
                 type: sum
