@@ -1,0 +1,79 @@
+version: 2
+
+models:
+  - name: int_order_items_enriched
+    description: >
+      Lignes de commande valorisées : montant brut et net TTC, remise, montant net HT,
+      coût d'achat et marge (calculée sur le HT).
+    data_tests:
+      # Contrôles de cohérence métier (tests de dbt_utils)
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "net_amount_incl_vat <= gross_amount_incl_vat"
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "net_amount_excl_vat < net_amount_incl_vat"
+    columns:
+      - name: order_item_id
+        data_tests:
+          - unique
+          - not_null
+      - name: discount_rate
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 1
+
+  - name: int_orders_enriched
+    description: Commandes avec montants agrégés et règles de gestion du statut (seed).
+    columns:
+      - name: order_id
+        data_tests:
+          - unique
+          - not_null
+      - name: item_count
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+
+  - name: int_postal_code_communes
+    description: Communes candidates par code postal (ephemeral, injecté en CTE).
+
+  - name: int_customers_geolocated
+    description: Clients rattachés à leur commune officielle (meilleure candidate par code postal).
+    columns:
+      - name: customer_id
+        data_tests:
+          - unique
+          - not_null
+      - name: commune_code
+        description: Code INSEE de la commune retenue (arrondissement pour Paris et Lyon).
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_geo__communes')
+                field: commune_code
+
+  - name: int_dvf_sales
+    description: >
+      Ventes DVF au grain de la mutation, avec catégorie de bien, indicateur de vente
+      de référence et prix au m² (ventes simples d'un seul logement uniquement).
+    columns:
+      - name: mutation_id
+        data_tests:
+          - unique
+          - not_null
+      - name: sale_category
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Appartement", "Maison", "Plusieurs logements", "Hors logement"]
+      - name: price_per_m2
+        description: Prix au m² habitable, renseigné uniquement pour les ventes de référence.
+        data_tests:
+          - not_null:
+              config:
+                where: "is_reference_sale"

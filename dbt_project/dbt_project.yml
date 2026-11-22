@@ -13,6 +13,12 @@ clean-targets:
   - target
   - dbt_packages
 
+# Variables globales, surchargeables à l'exécution : dbt build --vars '{vat_rate: 0.055}'
+vars:
+  vat_rate: 0.20                # TVA française au taux normal (prix catalogue exprimés TTC)
+  dvf_min_price_per_m2: 1000    # en dessous : vente atypique (donation déguisée, erreur de saisie...)
+  dvf_max_price_per_m2: 25000   # au-dessus : vente atypique (lot mal renseigné, bien d'exception...)
+
 # Architecture médaillon : chaque couche dans son propre schéma PostgreSQL.
 # Le nom final du schéma est calculé par la macro generate_schema_name (macros/).
 models:

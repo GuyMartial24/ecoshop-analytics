@@ -30,7 +30,17 @@ models:
 
   - name: stg_geo__commune_postal_codes
     description: Table de correspondance commune / code postal (plusieurs-à-plusieurs).
+    data_tests:
+      # Test de dbt_utils : le couple (commune, code postal) est unique
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [commune_code, postal_code]
     columns:
+      - name: commune_postal_code_id
+        description: Clé de substitution (hachage MD5 de commune_code et postal_code).
+        data_tests:
+          - unique
+          - not_null
       - name: commune_code
         data_tests:
           - not_null

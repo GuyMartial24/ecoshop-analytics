@@ -16,8 +16,8 @@ réelles DVF), transformation avec dbt et restitution dans des dashboards Lightd
                            ▼
 ┌──────────────── PostgreSQL (Docker) ────────────────┐
 │ raw_ecoshop · raw_geo · raw_dvf   (Bronze, dlt)     │
-│ seeds · staging                   (Silver, dbt)     │
-│ intermediate · marts              (dbt, à venir)    │
+│ seeds · staging · intermediate    (Silver, dbt)     │
+│ marts                             (Gold, dbt)       │
 └──────────────────────────┬──────────────────────────┘
                            ▼
                 Lightdash (Docker) → dashboards
@@ -80,6 +80,7 @@ identifiants du `.env`, lus par `profiles.yml` via `env_var()` (aucun secret ver
 ```bash
 cd dbt_project
 
+uv run --env-file ../.env dbt deps              # installe les packages (dbt_utils)
 uv run --env-file ../.env dbt debug             # vérifie la connexion
 uv run --env-file ../.env dbt source freshness  # contrôle la fraîcheur des sources
 uv run --env-file ../.env dbt build             # seeds, modèles et tests dans l'ordre du DAG
@@ -91,8 +92,24 @@ uv run --env-file ../.env dbt docs serve --port 8081
 |---|---|---|---|
 | Seeds | `seeds` | table | Référentiels maintenus à la main (statuts de commande) |
 | Staging | `staging` | view | Nettoyage, typage, renommage : un modèle par table source |
-| Intermediate | `intermediate` | view | Jointures et règles métier (à venir) |
-| Marts | `marts` | table | Modèle en étoile exposé à Lightdash (à venir) |
+| Intermediate | `intermediate` | view / ephemeral | Jointures, calculs et règles métier réutilisables |
+| Marts | `marts` | table | Modèle en étoile exposé à Lightdash |
+
+### Modèle en étoile (schéma `marts`)
+
+| Modèle | Grain | Contenu |
+|---|---|---|
+| `dim_customers` | 1 client | Segment, commune, indicateurs de cycle de vie (sans donnée personnelle directe) |
+| `dim_products` | 1 produit | Prix TTC et HT, coût, marge unitaire |
+| `dim_communes` | 1 commune | Département, région, population, coordonnées GPS |
+| `fct_orders` | 1 commande | Montants TTC et HT, remise, coût, marge ; contrat de modèle appliqué |
+| `fct_order_items` | 1 article | Détail par produit et catégorie |
+| `fct_dvf_sales` | 1 vente immobilière | Prix, surface, prix au m² des ventes de référence |
+
+Règles de calcul : les prix catalogue sont TTC ; la marge est calculée sur le HT
+(macro `amount_excl_vat`, taux de TVA dans la variable `vat_rate`). Pour DVF, le prix
+au m² n'est calculé que sur les ventes simples d'un seul logement, et les valeurs hors
+bornes (variables `dvf_min_price_per_m2` et `dvf_max_price_per_m2`) sont signalées.
 
 Les schémas sont nommés par la macro `generate_schema_name` : noms simples en `dev` et
 `prod`, préfixés en CI (ex. `ci_pr_12_staging`) pour isoler chaque exécution.
@@ -111,10 +128,13 @@ Les schémas sont nommés par la macro `generate_schema_name` : noms simples en 
 └── dbt_project/
     ├── dbt_project.yml       # Couches, schémas et matérialisations
     ├── profiles.yml          # Connexions dev / ci / prod (variables d'environnement)
-    ├── macros/               # generate_schema_name
+    ├── packages.yml          # dbt_utils (version figée dans package-lock.yml)
+    ├── macros/               # generate_schema_name, macros financières
     ├── seeds/                # order_status_mapping.csv
     └── models/
-        └── staging/          # ecoshop/, geo/, dvf/ : sources, modèles et tests
+        ├── staging/          # ecoshop/, geo/, dvf/ : sources, modèles et tests
+        ├── intermediate/     # valorisation, géolocalisation, ventes DVF
+        └── marts/            # dimensions et faits exposés à Lightdash
 ```
 
 ## Avancement
@@ -123,7 +143,8 @@ Les schémas sont nommés par la macro `generate_schema_name` : noms simples en 
 - [x] Étape 1 : stack Docker locale
 - [x] Étape 2 : ingestion dlt (3 sources)
 - [x] Étape 3 : fondations dbt (sources, fraîcheur, staging, seed, tests)
-- [ ] Étapes 4 et 5 : modélisation dbt (intermédiaire, marts, incrémental, snapshots, tests avancés)
+- [x] Étape 4 : modélisation métier (packages, macros, intermediate, marts en étoile, contrat)
+- [ ] Étape 5 : dbt avancé (incrémental, snapshots SCD2, tests singuliers et unitaires, Elementary)
 - [ ] Étape 6 : orchestration Airflow + Cosmos
 - [ ] Étape 7 : couche sémantique et dashboards Lightdash
 - [ ] Étape 8 : CI/CD GitHub Actions
