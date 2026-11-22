@@ -12,6 +12,7 @@ ecoshop:
       dbname: "{{ env_var('WAREHOUSE_DB') }}"
       schema: analytics
       threads: 4
+      sslmode: disable  # PostgreSQL local sans SSL
 
     # CI : schémas préfixés par DBT_CI_SCHEMA
     ci:
@@ -23,6 +24,18 @@ ecoshop:
       dbname: "{{ env_var('WAREHOUSE_DB') }}"
       schema: "{{ env_var('DBT_CI_SCHEMA', 'ci') }}"
       threads: 4
+
+    # Connexion enregistrée dans Lightdash (depuis son conteneur)
+    lightdash:
+      type: postgres
+      host: warehouse
+      port: 5432
+      user: "{{ env_var('WAREHOUSE_USER') }}"
+      password: "{{ env_var('WAREHOUSE_PASSWORD') }}"
+      dbname: "{{ env_var('WAREHOUSE_DB') }}"
+      schema: analytics
+      threads: 4
+      sslmode: disable
 
     # Production (VPS)
     prod:

@@ -1,0 +1,60 @@
+chartConfig:
+  config:
+    colorOverrides: {}
+    colorRange:
+      - "#2C7BB6"
+      - "#FFFFBF"
+      - "#D7191C"
+    defaultCenterLat: 45.77853851177791
+    defaultCenterLon: 4.88476950173963
+    defaultZoom: 10
+    fieldConfig: {}
+    latitudeFieldId: dim_communes_latitude
+    locationType: scatter
+    longitudeFieldId: dim_communes_longitude
+    mapType: world
+    maxBubbleSize: 40
+    minBubbleSize: 10
+    saveMapExtent: true
+    showLegend: true
+    sizeFieldId: fct_orders_revenue_incl_vat
+    tileBackground: openstreetmap
+    valueFieldId: fct_orders_revenue_order_count
+  type: map
+contentType: chart
+dashboardSlug: vue-ex-cutive
+description: >-
+  Chiffre d'affaires TTC par commune du client au moment de la commande. Taille
+  : CA TTC ; couleur : nombre de commandes.
+metricQuery:
+  additionalMetrics: []
+  customDimensions: []
+  dimensions:
+    - dim_communes_commune_name
+    - dim_communes_latitude
+    - dim_communes_longitude
+  exploreName: fct_orders
+  filters: {}
+  limit: 500
+  metricOverrides: {}
+  metrics:
+    - fct_orders_revenue_incl_vat
+    - fct_orders_revenue_order_count
+  sorts:
+    - descending: true
+      fieldId: fct_orders_revenue_incl_vat
+  tableCalculations: []
+  timezone: project_timezone
+name: CA par commune
+slug: ca-par-commune
+spaceSlug: shared/ecoshop
+tableConfig:
+  columnOrder:
+    - dim_communes_commune_name
+    - dim_communes_latitude
+    - dim_communes_longitude
+    - fct_orders_revenue_incl_vat
+    - fct_orders_revenue_order_count
+tableName: fct_orders
+verification: null
+version: 1

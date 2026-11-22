@@ -5,55 +5,176 @@ models:
   # Dimensions
 
   - name: dim_communes
-    description: Communes et arrondissements municipaux avec département, région, population et coordonnées GPS.
+    description: Communes et arrondissements avec département, région, population et coordonnées GPS.
+    config:
+      meta:
+        label: Communes
     columns:
       - name: commune_code
         description: Code INSEE.
         data_tests:
           - unique
           - not_null
+        config:
+          meta:
+            dimension:
+              label: Code commune
+      - name: commune_name
+        config:
+          meta:
+            dimension:
+              label: Commune
+      - name: commune_type
+        config:
+          meta:
+            dimension:
+              hidden: true
+      - name: is_municipal_district
+        config:
+          meta:
+            dimension:
+              label: Arrondissement
+      - name: department_code
+        config:
+          meta:
+            dimension:
+              label: Code département
+      - name: department_name
+        config:
+          meta:
+            dimension:
+              label: Département
+      - name: region_code
+        config:
+          meta:
+            dimension:
+              hidden: true
+      - name: region_name
+        config:
+          meta:
+            dimension:
+              label: Région
+      - name: population
+        config:
+          meta:
+            dimension:
+              label: Population
+      - name: area_hectares
+        config:
+          meta:
+            dimension:
+              label: Superficie (ha)
       - name: latitude
         data_tests:
           - not_null
+        config:
+          meta:
+            dimension:
+              label: Latitude
       - name: longitude
         data_tests:
           - not_null
+        config:
+          meta:
+            dimension:
+              label: Longitude
 
   - name: dim_products
     description: Catalogue produits avec prix TTC et HT, coût et marge unitaire.
+    config:
+      meta:
+        label: Produits
     columns:
       - name: product_id
         data_tests:
           - unique
           - not_null
+        config:
+          meta:
+            dimension:
+              label: Identifiant produit
+      - name: product_name
+        config:
+          meta:
+            dimension:
+              label: Produit
+      - name: product_category
+        config:
+          meta:
+            dimension:
+              label: Catégorie
       - name: list_price_incl_vat
         data_tests:
           - positive_value
+        config:
+          meta:
+            dimension:
+              label: Prix catalogue TTC
+              format: eur
+      - name: list_price_excl_vat
+        config:
+          meta:
+            dimension:
+              label: Prix catalogue HT
+              format: eur
       - name: unit_cost
         data_tests:
           - positive_value
+        config:
+          meta:
+            dimension:
+              label: Coût unitaire
+              format: eur
       - name: unit_margin
-        description: Marge unitaire au prix catalogue (HT - coût) ; aucun produit n'est vendu à perte hors remise.
+        description: Marge unitaire au prix catalogue (HT - coût).
         data_tests:
           - positive_value:
               arguments:
                 allow_zero: true
+        config:
+          meta:
+            dimension:
+              label: Marge unitaire
+              format: eur
 
   - name: dim_customers
     description: >
-      Clients dans leur état courant, rattachés à leur commune, avec leurs indicateurs
-      de cycle de vie (commandes comptées dans le CA). Aucune donnée personnelle directe
-      (email, nom complet) n'est exposée.
+      Clients dans leur état courant, avec leur commune et leurs indicateurs
+      (commandes comptées dans le CA). Pas d'email ni de nom complet.
+    config:
+      meta:
+        label: Clients
+        joins:
+          - join: dim_communes
+            label: Commune du client
+            sql_on: ${dim_customers.commune_code} = ${dim_communes.commune_code}
     columns:
       - name: customer_id
         data_tests:
           - unique
           - not_null
+        config:
+          meta:
+            dimension:
+              label: Identifiant client
+            metrics:
+              customer_count:
+                type: count_distinct
+                label: Nombre de clients
+      - name: customer_display_name
+        config:
+          meta:
+            dimension:
+              label: Client
       - name: customer_segment
         data_tests:
           - accepted_values:
               arguments:
                 values: ["Standard", "Premium", "VIP"]
+        config:
+          meta:
+            dimension:
+              label: Segment actuel
       - name: commune_code
         data_tests:
           - not_null
@@ -61,18 +182,83 @@ models:
               arguments:
                 to: ref('dim_communes')
                 field: commune_code
+        config:
+          meta:
+            dimension:
+              hidden: true
+      - name: postal_code
+        config:
+          meta:
+            dimension:
+              label: Code postal
+      - name: customer_created_at
+        config:
+          meta:
+            dimension:
+              label: Date d'inscription
+              time_intervals: [DAY, MONTH, YEAR]
+      - name: first_order_date
+        config:
+          meta:
+            dimension:
+              label: Première commande
+              time_intervals: [MONTH, YEAR]
+      - name: last_order_date
+        config:
+          meta:
+            dimension:
+              label: Dernière commande
+              time_intervals: [MONTH, YEAR]
+      - name: order_count
+        config:
+          meta:
+            dimension:
+              label: Nombre de commandes
+            metrics:
+              avg_order_count:
+                type: average
+                label: Commandes par client
+                round: 1
+      - name: lifetime_revenue_incl_vat
+        config:
+          meta:
+            dimension:
+              label: CA cumulé TTC
+              format: eur
+            metrics:
+              total_lifetime_revenue:
+                type: sum
+                label: CA cumulé TTC (total)
+                format: eur
+                round: 0
+      - name: lifetime_margin
+        config:
+          meta:
+            dimension:
+              label: Marge cumulée
+              format: eur
 
   - name: dim_customers_history
     description: >
-      Dimension client historisée (SCD de type 2), construite sur le snapshot
-      snap_customers : une ligne par version d'un client, valide sur [valid_from, valid_to[.
-      La version courante a valid_to = 9999-12-31.
+      Historique des clients (SCD2), construit sur le snapshot snap_customers :
+      une ligne par version, valide sur [valid_from, valid_to[.
+    config:
+      meta:
+        label: Historique des clients
     columns:
       - name: customer_version_id
-        description: Clé de substitution de la version (customer_id + valid_from).
+        description: Clé de la version (customer_id + valid_from).
         data_tests:
           - unique
           - not_null
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              version_count:
+                type: count_distinct
+                label: Nombre de versions
       - name: customer_id
         data_tests:
           - not_null
@@ -80,23 +266,61 @@ models:
               arguments:
                 to: ref('dim_customers')
                 field: customer_id
+        config:
+          meta:
+            dimension:
+              label: Identifiant client
+      - name: customer_segment
+        config:
+          meta:
+            dimension:
+              label: Segment
       - name: commune_code
-        description: Commune du client pendant la période de validité de la version.
+        description: Commune du client pendant la période de validité.
         data_tests:
           - not_null
+        config:
+          meta:
+            dimension:
+              label: Code commune
+      - name: valid_from
+        config:
+          meta:
+            dimension:
+              label: Début de validité
+              time_intervals: [DAY, MONTH, YEAR]
+      - name: valid_to
+        config:
+          meta:
+            dimension:
+              label: Fin de validité
+              time_intervals: [DAY, MONTH, YEAR]
       - name: is_current
-        description: Vrai pour la version en vigueur aujourd'hui (une seule par client).
+        description: Vrai pour la version en vigueur (une seule par client).
+        config:
+          meta:
+            dimension:
+              label: Version courante
 
   # Faits
 
   - name: fct_orders
     description: >
-      Commandes avec montants (TTC, HT), coût et marge. Une ligne par commande.
-      Matérialisation incrémentale (merge sur order_id). Le segment et la commune sont
-      ceux du client à la date de la commande (jointure temporelle sur dim_customers_history).
+      Commandes avec montants TTC et HT, coût et marge. Une ligne par commande.
+      Segment et commune du client à la date de la commande.
     config:
       contract:
         enforced: true
+      meta:
+        label: Commandes
+        joins:
+          - join: dim_customers
+            label: Client
+            sql_on: ${fct_orders.customer_id} = ${dim_customers.customer_id}
+            fields: [customer_display_name, customer_segment]
+          - join: dim_communes
+            label: Commune à la commande
+            sql_on: ${fct_orders.commune_code} = ${dim_communes.commune_code}
     constraints:
       - type: primary_key
         columns: [order_id]
@@ -117,6 +341,16 @@ models:
           - type: not_null
         data_tests:
           - unique
+        config:
+          meta:
+            dimension:
+              label: Numéro de commande
+            metrics:
+              revenue_order_count:
+                type: count_distinct
+                label: Commandes
+                filters:
+                  - is_revenue: true
       - name: customer_id
         data_type: bigint
         constraints:
@@ -126,6 +360,16 @@ models:
               arguments:
                 to: ref('dim_customers')
                 field: customer_id
+        config:
+          meta:
+            dimension:
+              label: Identifiant client
+            metrics:
+              active_customer_count:
+                type: count_distinct
+                label: Clients actifs
+                filters:
+                  - is_revenue: true
       - name: customer_version_id
         data_type: text
         description: Version du client en vigueur à la date de la commande.
@@ -136,9 +380,17 @@ models:
               arguments:
                 to: ref('dim_customers_history')
                 field: customer_version_id
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: customer_segment_at_order
         data_type: varchar
         description: Segment du client au moment de la commande.
+        config:
+          meta:
+            dimension:
+              label: Segment à la commande
       - name: commune_code
         data_type: varchar
         description: Commune du client au moment de la commande.
@@ -147,78 +399,307 @@ models:
               arguments:
                 to: ref('dim_communes')
                 field: commune_code
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: order_date
         data_type: date
         constraints:
           - type: not_null
+        config:
+          meta:
+            dimension:
+              label: Date de commande
+              time_intervals: [DAY, WEEK, MONTH, QUARTER, YEAR]
       - name: ordered_at
         data_type: timestamptz
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: updated_at
         data_type: timestamptz
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: order_status
         data_type: varchar
         constraints:
           - type: not_null
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: order_status_label
         data_type: varchar
+        config:
+          meta:
+            dimension:
+              label: Statut
       - name: is_revenue
         data_type: boolean
-        description: Vrai si la commande compte dans le chiffre d'affaires (expédiée ou livrée).
+        description: Vrai si la commande compte dans le CA (expédiée ou livrée).
+        config:
+          meta:
+            dimension:
+              label: Comptée dans le CA
       - name: is_final
         data_type: boolean
+        config:
+          meta:
+            dimension:
+              label: Statut définitif
       - name: item_count
         data_type: bigint
+        config:
+          meta:
+            dimension:
+              label: Nombre d'articles
       - name: total_quantity
         data_type: bigint
+        config:
+          meta:
+            dimension:
+              label: Quantité
       - name: gross_amount_incl_vat
         data_type: numeric(14, 2)
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: discount_amount
         data_type: numeric(14, 2)
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              total_discount:
+                type: sum
+                label: Remises TTC
+                format: eur
+                round: 0
+                filters:
+                  - is_revenue: true
       - name: net_amount_incl_vat
         data_type: numeric(14, 2)
-        description: Chiffre d'affaires TTC après remise.
+        description: CA TTC après remise.
+        config:
+          meta:
+            dimension:
+              label: Montant TTC
+              format: eur
+            metrics:
+              revenue_incl_vat:
+                type: sum
+                label: CA TTC
+                format: eur
+                round: 0
+                filters:
+                  - is_revenue: true
+              average_basket:
+                type: average
+                label: Panier moyen TTC
+                format: eur
+                round: 2
+                filters:
+                  - is_revenue: true
       - name: net_amount_excl_vat
         data_type: numeric(14, 2)
-        description: Chiffre d'affaires HT après remise.
+        description: CA HT après remise.
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              revenue_excl_vat:
+                type: sum
+                label: CA HT
+                format: eur
+                round: 0
+                filters:
+                  - is_revenue: true
       - name: cost_amount
         data_type: numeric(14, 2)
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: margin_amount
         data_type: numeric(14, 2)
         description: Marge = CA HT - coût d'achat.
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              margin:
+                type: sum
+                label: Marge
+                format: eur
+                round: 0
+                filters:
+                  - is_revenue: true
+              margin_rate:
+                type: number
+                label: Taux de marge
+                sql: ${margin} / NULLIF(${revenue_excl_vat}, 0)
+                format: percent
+                round: 1
 
   - name: fct_order_items
     description: Lignes de commande valorisées. Une ligne par article.
+    config:
+      meta:
+        label: Lignes de commande
+        joins:
+          - join: dim_products
+            label: Produit
+            sql_on: ${fct_order_items.product_id} = ${dim_products.product_id}
     columns:
       - name: order_item_id
         data_tests:
           - unique
           - not_null
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: order_id
         data_tests:
           - relationships:
               arguments:
                 to: ref('fct_orders')
                 field: order_id
+        config:
+          meta:
+            dimension:
+              label: Numéro de commande
+      - name: customer_id
+        config:
+          meta:
+            dimension:
+              hidden: true
       - name: product_id
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_products')
                 field: product_id
+        config:
+          meta:
+            dimension:
+              hidden: true
+      - name: order_date
+        config:
+          meta:
+            dimension:
+              label: Date de commande
+              time_intervals: [DAY, WEEK, MONTH, QUARTER, YEAR]
+      - name: order_status
+        config:
+          meta:
+            dimension:
+              label: Statut
+      - name: is_revenue
+        config:
+          meta:
+            dimension:
+              label: Comptée dans le CA
       - name: quantity
         data_tests:
           - positive_value
+        config:
+          meta:
+            dimension:
+              label: Quantité
+            metrics:
+              units_sold:
+                type: sum
+                label: Unités vendues
+                filters:
+                  - is_revenue: true
+      - name: unit_price
+        config:
+          meta:
+            dimension:
+              label: Prix unitaire TTC
+              format: eur
+      - name: discount_rate
+        config:
+          meta:
+            dimension:
+              label: Taux de remise
+              format: percent
+      - name: net_amount_incl_vat
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              item_revenue_incl_vat:
+                type: sum
+                label: CA TTC
+                format: eur
+                round: 0
+                filters:
+                  - is_revenue: true
+      - name: margin_amount
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              item_margin:
+                type: sum
+                label: Marge
+                format: eur
+                round: 0
+                filters:
+                  - is_revenue: true
 
   - name: fct_dvf_sales
     description: >
-      Ventes immobilières DVF, une ligne par vente. Le prix au m² n'est renseigné que
-      pour les ventes de référence (vente simple d'un seul logement) ; filtrer
-      is_price_outlier = false pour les moyennes.
+      Ventes immobilières DVF, une ligne par vente. Prix au m² renseigné pour
+      les ventes d'un seul logement uniquement.
+    config:
+      meta:
+        label: Ventes immobilières (DVF)
+        joins:
+          - join: dim_communes
+            label: Commune
+            sql_on: ${fct_dvf_sales.commune_code} = ${dim_communes.commune_code}
     columns:
       - name: mutation_id
         data_tests:
           - unique
           - not_null
+        config:
+          meta:
+            dimension:
+              label: Identifiant de vente
+            metrics:
+              sale_count:
+                type: count_distinct
+                label: Ventes
+      - name: mutation_date
+        config:
+          meta:
+            dimension:
+              label: Date de vente
+              time_intervals: [MONTH, QUARTER, YEAR]
+      - name: mutation_type
+        config:
+          meta:
+            dimension:
+              label: Nature de la mutation
+      - name: sale_category
+        config:
+          meta:
+            dimension:
+              label: Type de bien
       - name: commune_code
         data_tests:
           - relationships:
@@ -227,9 +708,239 @@ models:
                 field: commune_code
               config:
                 severity: warn   # communes ayant changé de code depuis la vente
+        config:
+          meta:
+            dimension:
+              hidden: true
+      - name: department_code
+        config:
+          meta:
+            dimension:
+              label: Code département
+      - name: property_value
+        config:
+          meta:
+            dimension:
+              label: Prix de vente
+              format: eur
+            metrics:
+              total_property_value:
+                type: sum
+                label: Montant des ventes
+                format: eur
+                round: 0
+      - name: dwelling_count
+        config:
+          meta:
+            dimension:
+              label: Nombre de logements
+      - name: dwelling_area_m2
+        config:
+          meta:
+            dimension:
+              label: Surface habitable (m²)
+      - name: room_count
+        config:
+          meta:
+            dimension:
+              label: Nombre de pièces
       - name: price_per_m2
         data_tests:
           # Les ventes à 1 euro sont déjà signalées comme aberrantes
           - positive_value:
               config:
                 where: "not is_price_outlier"
+        config:
+          meta:
+            dimension:
+              label: Prix au m²
+              format: eur
+            metrics:
+              median_price_per_m2:
+                type: median
+                label: Prix médian au m²
+                format: eur
+                round: 0
+                filters:
+                  - is_reference_sale: true
+                  - is_price_outlier: false
+              average_price_per_m2:
+                type: average
+                label: Prix moyen au m²
+                format: eur
+                round: 0
+                filters:
+                  - is_reference_sale: true
+                  - is_price_outlier: false
+      - name: is_reference_sale
+        config:
+          meta:
+            dimension:
+              label: Vente de référence
+      - name: is_price_outlier
+        config:
+          meta:
+            dimension:
+              label: Prix aberrant
+      - name: latitude
+        config:
+          meta:
+            dimension:
+              label: Latitude
+      - name: longitude
+        config:
+          meta:
+            dimension:
+              label: Longitude
+      - name: source_file
+        config:
+          meta:
+            dimension:
+              hidden: true
+
+  # Qualité des données
+
+  - name: fct_data_quality_tests
+    description: Résultats des tests dbt enregistrés par Elementary.
+    config:
+      meta:
+        label: Tests de qualité
+    columns:
+      - name: test_result_id
+        data_tests:
+          - unique
+          - not_null
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              test_run_count:
+                type: count_distinct
+                label: Tests exécutés
+      - name: detected_at
+        config:
+          meta:
+            dimension:
+              label: Exécuté le
+              time_intervals: [HOUR, DAY]
+      - name: test_date
+        config:
+          meta:
+            dimension:
+              label: Date
+              time_intervals: [DAY, WEEK, MONTH]
+      - name: test_name
+        config:
+          meta:
+            dimension:
+              label: Test
+      - name: test_type
+        config:
+          meta:
+            dimension:
+              label: Type de test
+      - name: schema_name
+        config:
+          meta:
+            dimension:
+              label: Schéma
+      - name: table_name
+        config:
+          meta:
+            dimension:
+              label: Table
+      - name: column_name
+        config:
+          meta:
+            dimension:
+              label: Colonne
+      - name: status
+        config:
+          meta:
+            dimension:
+              label: Statut
+            metrics:
+              failed_test_count:
+                type: count
+                label: Tests en échec
+                filters:
+                  - status: fail
+              warning_test_count:
+                type: count
+                label: Tests en avertissement
+                filters:
+                  - status: warn
+      - name: failures
+        config:
+          meta:
+            dimension:
+              label: Lignes en anomalie
+
+  - name: fct_pipeline_loads
+    description: Chargements dlt des trois sources, une ligne par chargement.
+    config:
+      meta:
+        label: Chargements des sources
+    columns:
+      - name: pipeline_load_id
+        data_tests:
+          - unique
+          - not_null
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              load_count:
+                type: count_distinct
+                label: Chargements
+      - name: pipeline
+        config:
+          meta:
+            dimension:
+              label: Source
+      - name: load_id
+        config:
+          meta:
+            dimension:
+              hidden: true
+      - name: inserted_at
+        config:
+          meta:
+            dimension:
+              label: Chargé le
+              time_intervals: [HOUR, DAY]
+            metrics:
+              last_load_at:
+                type: max
+                label: Dernier chargement
+      - name: load_date
+        config:
+          meta:
+            dimension:
+              label: Date de chargement
+              time_intervals: [DAY, WEEK, MONTH]
+      - name: is_success
+        config:
+          meta:
+            dimension:
+              label: Réussi
+      - name: orders_rows
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              total_orders_rows:
+                type: sum
+                label: Commandes chargées
+      - name: customers_rows
+        config:
+          meta:
+            dimension:
+              hidden: true
+            metrics:
+              total_customers_rows:
+                type: sum
+                label: Clients chargés

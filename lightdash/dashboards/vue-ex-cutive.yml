@@ -1,0 +1,324 @@
+config:
+  isAddFilterDisabled: false
+  isDateZoomDisabled: false
+  pinnedParameters: []
+contentType: dashboard
+description: |2
+   Pilotage EcoShop : ventes, carte de France (e-commerce et marché immobilier DVF), clients et qualité des données.
+filters:
+  dimensions: []
+  metrics: []
+  tableCalculations: []
+name: EcoShop Analytics
+parameters: {}
+slug: vue-ex-cutive
+spaceSlug: shared/ecoshop
+tabs:
+  - hidden: false
+    name: Vue exécutive
+    order: 0
+    slug: vue-ex-cutive
+  - hidden: false
+    name: Cartographie France
+    order: 1
+    slug: cartographie-france
+  - hidden: false
+    name: Clients et rétention
+    order: 2
+    slug: clients-et-r-tention
+  - hidden: false
+    name: Qualité et fraîcheur
+    order: 3
+    slug: qualit-et-fra-cheur
+tiles:
+  - h: 1
+    properties:
+      content: >
+        **Sources** : commandes EcoShop (commune du client au moment de l'achat)
+        et ventes immobilières
+
+        DVF 2024-2025 des départements de Paris (75), du Rhône (69) et de la
+        Gironde (33).
+
+        Prix au m² : ventes d'un seul appartement ou d'une seule maison, hors
+        prix aberrants,
+
+        communes d'au moins 20 ventes.
+      hideFrame: true
+      title: ""
+    tabSlug: cartographie-france
+    type: markdown
+    w: 28
+    x: 0
+    "y": 0
+  - h: 1
+    properties:
+      content: >
+        **Segments** : Standard, Premium et VIP. Le segment **actuel** décrit le
+        portefeuille aujourd'hui ;
+
+        le segment **à la commande** retrace l'historique d'achat (historique
+        SCD2).
+
+        Les indicateurs ne comptent que les commandes expédiées ou livrées.
+      hideFrame: true
+      title: ""
+    tabSlug: clients-et-r-tention
+    type: markdown
+    w: 26
+    x: 0
+    "y": 0
+  - h: 1
+    properties:
+      content: >
+        **Périmètre** : commandes expédiées ou livrées depuis janvier 2025,
+        montants après remise.
+
+        La marge est calculée sur le chiffre d'affaires HT (TVA 20 %). Le mois
+        en cours est incomplet (pointillés).
+
+        Les segments sont ceux du client **au moment de la commande**.
+      hideFrame: true
+      title: "À propos de cet onglet "
+    tabSlug: vue-ex-cutive
+    type: markdown
+    w: 24
+    x: 0
+    "y": 0
+  - h: 9
+    properties:
+      chartName: CA par commune
+      chartSlug: ca-par-commune
+      hideTitle: false
+      title: ""
+    tabSlug: cartographie-france
+    tileSlug: ca-par-commune
+    type: saved_chart
+    w: 14
+    x: 0
+    "y": 1
+  - h: 6
+    properties:
+      chartName: Clients par segment
+      chartSlug: clients-par-segmen
+      hideTitle: false
+      title: ""
+    tabSlug: clients-et-r-tention
+    tileSlug: clients-par-segmen
+    type: saved_chart
+    w: 17
+    x: 0
+    "y": 1
+  - h: 1
+    properties:
+      content: >
+        **Suivi du pipeline quotidien** (ingestion dlt puis transformations
+        dbt).
+
+        Les avertissements sur `commune_code` concernent des communes DVF ayant
+        changé de code
+
+        depuis la vente : ils sont connus et sans impact sur les indicateurs.
+
+        Une alerte est envoyée sur Slack (#data-alerts) à chaque anomalie.
+      hideFrame: true
+      title: ""
+    tabSlug: qualit-et-fra-cheur
+    type: markdown
+    w: 28
+    x: 0
+    "y": 1
+  - h: 2
+    properties:
+      chartName: CA TTC
+      chartSlug: ca-ttc
+      hideTitle: true
+      title: ""
+    tabSlug: vue-ex-cutive
+    tileSlug: ca-ttc
+    type: saved_chart
+    w: 6
+    x: 0
+    "y": 1
+  - h: 2
+    properties:
+      chartName: Taux de marge
+      chartSlug: taux-de-marge
+      hideTitle: true
+      title: ""
+    tabSlug: vue-ex-cutive
+    tileSlug: taux-de-marge
+    type: saved_chart
+    w: 6
+    x: 6
+    "y": 1
+  - h: 2
+    properties:
+      chartName: Panier moyen TTC
+      chartSlug: panier-moyen-ttc
+      hideTitle: true
+      title: ""
+    tabSlug: vue-ex-cutive
+    tileSlug: panier-moyen-ttc
+    type: saved_chart
+    w: 6
+    x: 12
+    "y": 1
+  - h: 9
+    properties:
+      chartName: Prix au m² par commune
+      chartSlug: prix-au-m-par-commune
+      hideTitle: false
+      title: ""
+    tabSlug: cartographie-france
+    tileSlug: prix-au-m-par-commune
+    type: saved_chart
+    w: 14
+    x: 14
+    "y": 1
+  - h: 6
+    properties:
+      chartName: Commandes par client
+      chartSlug: commandes-par-client
+      hideTitle: false
+      title: ""
+    tabSlug: clients-et-r-tention
+    tileSlug: commandes-par-client
+    type: saved_chart
+    w: 9
+    x: 17
+    "y": 1
+  - h: 2
+    properties:
+      chartName: Commandes
+      chartSlug: commandes
+      hideTitle: true
+      title: ""
+    tabSlug: vue-ex-cutive
+    tileSlug: commandes
+    type: saved_chart
+    w: 6
+    x: 18
+    "y": 1
+  - h: 5
+    properties:
+      chartName: "Dernier chargement "
+      chartSlug: dernier-chargement
+      hideTitle: false
+      title: ""
+    tabSlug: qualit-et-fra-cheur
+    tileSlug: dernier-chargement
+    type: saved_chart
+    w: 12
+    x: 0
+    "y": 2
+  - h: 5
+    properties:
+      chartName: Évolution de la qualité
+      chartSlug: volution-de-la-qualit
+      hideTitle: false
+      title: ""
+    tabSlug: qualit-et-fra-cheur
+    tileSlug: volution-de-la-qualit
+    type: saved_chart
+    w: 16
+    x: 12
+    "y": 2
+  - h: 6
+    properties:
+      chartName: CA mensuel
+      chartSlug: ca-mensuel
+      hideTitle: false
+      title: ""
+    tabSlug: vue-ex-cutive
+    tileSlug: ca-mensuel
+    type: saved_chart
+    w: 13
+    x: 0
+    "y": 3
+  - h: 6
+    properties:
+      chartName: CA par segment
+      chartSlug: ca-par-segment
+      hideTitle: false
+      title: ""
+    tabSlug: vue-ex-cutive
+    tileSlug: ca-par-segment
+    type: saved_chart
+    w: 11
+    x: 13
+    "y": 3
+  - h: 8
+    properties:
+      chartName: "Commandes par segment et par mois "
+      chartSlug: commandes-par-segment-et-par-mois
+      hideTitle: false
+      title: ""
+    tabSlug: clients-et-r-tention
+    tileSlug: commandes-par-segment-et-par-mois
+    type: saved_chart
+    w: 26
+    x: 0
+    "y": 7
+  - h: 6
+    properties:
+      chartName: Volumes ingérés par jour
+      chartSlug: volumes-ing-r-s-par-jour
+      hideTitle: false
+      title: ""
+    tabSlug: qualit-et-fra-cheur
+    tileSlug: volumes-ing-r-s-par-jour
+    type: saved_chart
+    w: 28
+    x: 0
+    "y": 7
+  - h: 9
+    properties:
+      chartName: "Prix au m² par département "
+      chartSlug: prix-au-m-par-d-partement
+      hideTitle: false
+      title: ""
+    tabSlug: cartographie-france
+    tileSlug: prix-au-m-par-d-partement
+    type: saved_chart
+    w: 28
+    x: 0
+    "y": 10
+  - h: 9
+    properties:
+      chartName: " Tests en anomalie "
+      chartSlug: tests-en-anomalie
+      hideTitle: false
+      title: ""
+    tabSlug: qualit-et-fra-cheur
+    tileSlug: tests-en-anomalie
+    type: saved_chart
+    w: 28
+    x: 0
+    "y": 13
+  - h: 8
+    properties:
+      chartName: Top 10 clients
+      chartSlug: top-10-clients
+      hideTitle: false
+      title: ""
+    tabSlug: clients-et-r-tention
+    tileSlug: top-10-clients
+    type: saved_chart
+    w: 11
+    x: 0
+    "y": 15
+  - h: 8
+    properties:
+      chartName: Répartition du nombre de commandes
+      chartSlug: r-partition-du-nombre-de-commandes
+      hideTitle: false
+      title: ""
+    tabSlug: clients-et-r-tention
+    tileSlug: r-partition-du-nombre-de-commandes
+    type: saved_chart
+    w: 15
+    x: 11
+    "y": 15
+verification: null
+version: 1
