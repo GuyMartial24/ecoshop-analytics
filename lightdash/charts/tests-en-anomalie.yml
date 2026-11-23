@@ -53,7 +53,7 @@ metricQuery:
             fieldId: fct_data_quality_tests_status
           values:
             - warn
-            - pass
+            - fail
       id: 30aa2b42-57d7-4490-ab47-fb54d7797e24
   limit: 500
   metricOverrides: {}
