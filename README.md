@@ -20,6 +20,27 @@ par le pipeline :
 - **commandes et clients EcoShop** : données simulées par un générateur qui reproduit un
   back-office vivant (nouvelles commandes, changements de statut, de segment et d'adresse).
 
+### Aperçu
+
+**Vue exécutive** : chiffres clés, CA mensuel et CA par segment de client.
+
+![Vue exécutive](docs/images/lightdash-vue-executive.png)
+
+**Cartographie France** : CA par commune et prix médian au m² des ventes immobilières.
+
+![Cartographie France](docs/images/lightdash-cartographie.jpg)
+
+**Clients et rétention** : segments, commandes par segment au moment de l'achat,
+top 10 des clients et fréquence d'achat.
+
+![Clients et rétention](docs/images/lightdash-clients.png)
+
+![Top 10 clients et fréquence d'achat](docs/images/lightdash-top-clients.png)
+
+**Qualité et fraîcheur** : derniers chargements, volumes ingérés et suivi des tests.
+
+![Qualité et fraîcheur](docs/images/lightdash-qualite.png)
+
 ## Objectif
 
 Projet d'Analytics Engineering de bout en bout : ingestion de trois sources (un back-office
@@ -28,18 +49,36 @@ réelles DVF), transformation avec dbt et restitution dans des dashboards Lightd
 
 ## Architecture
 
-```
-[Back-office simulé]   [API Géo]            [DVF data.gouv.fr]
-   (Faker)          (geo.api.gouv.fr)      (CSV géolocalisés)
-        └──────────────── dlt ─────────────────┘
-                           ▼
-┌──────────────── PostgreSQL (Docker) ────────────────┐
-│ raw_ecoshop · raw_geo · raw_dvf   (Bronze, dlt)     │
-│ seeds · staging · intermediate    (Silver, dbt)     │
-│ marts                             (Gold, dbt)       │
-└──────────────────────────┬──────────────────────────┘
-                           ▼
-                Lightdash (Docker) → dashboards
+```mermaid
+flowchart LR
+    subgraph sources["Sources"]
+        A["Back-office EcoShop<br/>(simulé)"]
+        B["API Géo<br/>geo.api.gouv.fr"]
+        C["DVF<br/>data.gouv.fr"]
+    end
+
+    D["dlt<br/>ingestion"]
+
+    subgraph pg["PostgreSQL"]
+        E["Bronze<br/>raw_ecoshop, raw_geo, raw_dvf"]
+        F["Silver<br/>staging, intermediate, snapshots"]
+        G["Gold<br/>marts (modèle en étoile)"]
+    end
+
+    H["Lightdash<br/>dashboard"]
+    I["Slack<br/>#data-alerts"]
+    J["Airflow + Cosmos<br/>DAG quotidien"]
+
+    A --> D
+    B --> D
+    C --> D
+    D --> E
+    E -->|dbt| F
+    F -->|dbt| G
+    G --> H
+    G -.->|Elementary| I
+    J -.-> D
+    J -.-> F
 ```
 
 ## Stack technique
@@ -167,6 +206,11 @@ cd dbt_project
 uv run --env-file ../.env edr report --project-dir . --profiles-dir .   # rapport HTML
 ```
 
+Exemples d'alertes reçues sur `#data-alerts` : synthèse qualité d'une exécution dbt,
+échec d'une tâche Airflow, puis synthèse du run quotidien.
+
+![Alertes qualité sur Slack](docs/images/alertes-slack.png)
+
 ## Orchestration (Airflow + Cosmos)
 
 Airflow tourne en local dans un profil Docker Compose dédié, lancé uniquement à la
@@ -190,6 +234,10 @@ ingestion_dlt -> fraicheur_sources -> transformations_dbt (Cosmos) -> alertes_qu
 | `fraicheur_sources` | `dbt source freshness` ; envoie aussi, une fois par run, les métadonnées du projet à Elementary |
 | `transformations_dbt` | Projet dbt rendu par Cosmos : une tâche par seed, modèle et snapshot, suivie de ses tests ; les tests portant sur plusieurs modèles sont des tâches à part |
 | `alertes_qualite_slack` | Synthèse qualité du run en français, exécutée même si une étape a échoué |
+
+Graphe du DAG dans Airflow : chaque modèle dbt est une tâche, suivie de ses tests.
+
+![DAG ecoshop_quotidien rendu par Cosmos](docs/images/dag-airflow-cosmos.png)
 
 Toute tâche en échec publie également une alerte Slack en français. L'image Airflow
 contient deux environnements Python séparés : celui d'Airflow (avec Cosmos) et
@@ -230,6 +278,16 @@ Lightdash interroge l'entrepôt via la cible `lightdash` de `profiles.yml`
 
 ## Intégration continue (GitHub Actions)
 
+```mermaid
+flowchart LR
+    A["Commit sur develop"] --> B["Pull request<br/>vers main"]
+    B --> C{"CI<br/>ruff, ingestion,<br/>dbt build"}
+    C -->|échec| S["Alerte Slack"]
+    C -->|succès| D["Merge sur main"]
+    D --> E["CD<br/>scripts/deploy.sh<br/>sur le VPS"]
+    E -->|échec| S
+```
+
 Le workflow `.github/workflows/ci.yml` s'exécute sur chaque pull request vers
 `main` et sur chaque push sur `develop` :
 
@@ -246,10 +304,24 @@ En CI, la source DVF est limitée à Paris 2025 pour réduire la durée du run.
 Le projet tourne sur un VPS Linux ARM (Oracle Cloud), dans
 `~/Projets_en_Production/ecoshop-analytics` :
 
-```
-Internet ── HTTPS ──> Caddy (reverse proxy) ──> Lightdash (IP privée du VPS)
-                                                    │
-     Airflow (DAG quotidien, 2 h UTC) ──> dlt ──> PostgreSQL <── dbt (Cosmos)
+```mermaid
+flowchart LR
+    V["Visiteur"] -->|HTTPS| P["Caddy<br/>reverse proxy"]
+    G["GitHub Actions<br/>(CD)"] -->|SSH, clé restreinte| DS["scripts/deploy.sh"]
+
+    subgraph vps["VPS (conteneurs Docker)"]
+        L["Lightdash<br/>IP privée"]
+        W[("PostgreSQL<br/>entrepôt")]
+        AF["Airflow + Cosmos<br/>DAG quotidien, 2 h UTC"]
+        S3["SeaweedFS<br/>stockage S3"]
+    end
+
+    P --> L
+    L --> W
+    L --> S3
+    AF -->|dlt, dbt| W
+    DS --> AF
+    DS --> L
 ```
 
 | Élément | Configuration |
@@ -327,6 +399,7 @@ uv run ruff format --check .
 │   ├── deploy.sh             # Déploiement en production
 │   └── build_lightdash_arm64.sh  # Image Lightdash pour le VPS ARM
 ├── notebooks/                # Exploration et contrôles (Jupyter)
+├── docs/images/              # Captures d'écran du README
 ├── lightdash/                # Graphiques et dashboard Lightdash (YAML)
 └── dbt_project/
     ├── dbt_project.yml       # Couches, schémas, matérialisations et variables
