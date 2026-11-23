@@ -1,0 +1,61 @@
+erDiagram
+    fct_orders ||--|{ fct_order_items : "contient"
+    dim_customers ||--o{ fct_orders : "passe"
+    dim_customers_history ||--o{ fct_orders : "version à la commande"
+    dim_products ||--o{ fct_order_items : "concerne"
+    dim_communes ||--o{ fct_orders : "commune du client"
+    dim_communes ||--o{ fct_dvf_sales : "commune du bien"
+
+    fct_orders {
+        varchar order_id PK
+        bigint customer_id FK
+        text customer_version_id FK
+        varchar commune_code FK
+        date order_date
+        varchar order_status
+        numeric net_amount_incl_vat
+        numeric margin_amount
+    }
+    fct_order_items {
+        varchar order_item_id PK
+        varchar order_id FK
+        bigint product_id FK
+        int quantity
+        numeric net_amount_incl_vat
+        numeric margin_amount
+    }
+    fct_dvf_sales {
+        varchar mutation_id PK
+        varchar commune_code FK
+        date mutation_date
+        varchar sale_category
+        numeric property_value
+        numeric price_per_m2
+    }
+    dim_customers {
+        bigint customer_id PK
+        varchar customer_segment
+        varchar commune_code FK
+        numeric lifetime_revenue_incl_vat
+    }
+    dim_customers_history {
+        text customer_version_id PK
+        bigint customer_id FK
+        varchar customer_segment
+        varchar commune_code
+        timestamptz valid_from
+        timestamptz valid_to
+    }
+    dim_products {
+        bigint product_id PK
+        varchar product_category
+        numeric list_price_incl_vat
+        numeric unit_cost
+    }
+    dim_communes {
+        varchar commune_code PK
+        varchar commune_name
+        varchar department_name
+        float latitude
+        float longitude
+    }

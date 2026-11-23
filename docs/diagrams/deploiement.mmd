@@ -1,0 +1,7 @@
+flowchart LR
+    A["Pull request"] --> B{"CI<br/>lint, ingestion,<br/>dbt build"}
+    B -->|succès| C["Merge sur main"]
+    C --> D["CD<br/>déploiement sur le VPS"]
+    D --> E["Lightdash en ligne<br/>(HTTPS)"]
+    B -->|échec| S["Alerte Slack"]
+    D -->|échec| S

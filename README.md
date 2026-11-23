@@ -54,37 +54,9 @@ l'historisation des clients sur des données qui changent réellement.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph sources["Sources"]
-        A["Back-office EcoShop<br/>(simulé)"]
-        B["API Géo"]
-        C["DVF"]
-    end
+![Architecture de la plateforme](docs/images/architecture.png)
 
-    D["dlt<br/>ingestion"]
-
-    subgraph pg["PostgreSQL"]
-        E["Bronze<br/>données brutes"]
-        F["Silver<br/>staging, intermediate, snapshots"]
-        G["Gold<br/>faits et dimensions"]
-    end
-
-    H["Lightdash<br/>dashboard"]
-    I["Slack<br/>alertes qualité"]
-    J["Airflow + Cosmos<br/>DAG quotidien"]
-
-    A --> D
-    B --> D
-    C --> D
-    D --> E
-    E -->|dbt| F
-    F -->|dbt| G
-    G --> H
-    G -.->|Elementary| I
-    J -.-> D
-    J -.-> F
-```
+<sub>Source du schéma : [docs/diagrams/architecture.mmd](docs/diagrams/architecture.mmd)</sub>
 
 | Rôle | Outil |
 |---|---|
@@ -101,69 +73,9 @@ Modèle en étoile : deux tables de faits (commandes et ventes immobilières) pa
 dimension géographique, ce qui permet de croiser le chiffre d'affaires et le prix au m²
 d'une même commune.
 
-```mermaid
-erDiagram
-    fct_orders ||--|{ fct_order_items : "contient"
-    dim_customers ||--o{ fct_orders : "passe"
-    dim_customers_history ||--o{ fct_orders : "version à la commande"
-    dim_products ||--o{ fct_order_items : "concerne"
-    dim_communes ||--o{ fct_orders : "commune du client"
-    dim_communes ||--o{ fct_dvf_sales : "commune du bien"
+![Modèle de données : tables de faits et de dimensions](docs/images/modele-donnees.png)
 
-    fct_orders {
-        varchar order_id PK
-        bigint customer_id FK
-        text customer_version_id FK
-        varchar commune_code FK
-        date order_date
-        varchar order_status
-        numeric net_amount_incl_vat
-        numeric margin_amount
-    }
-    fct_order_items {
-        varchar order_item_id PK
-        varchar order_id FK
-        bigint product_id FK
-        int quantity
-        numeric net_amount_incl_vat
-        numeric margin_amount
-    }
-    fct_dvf_sales {
-        varchar mutation_id PK
-        varchar commune_code FK
-        date mutation_date
-        varchar sale_category
-        numeric property_value
-        numeric price_per_m2
-    }
-    dim_customers {
-        bigint customer_id PK
-        varchar customer_segment
-        varchar commune_code FK
-        numeric lifetime_revenue_incl_vat
-    }
-    dim_customers_history {
-        text customer_version_id PK
-        bigint customer_id FK
-        varchar customer_segment
-        varchar commune_code
-        timestamptz valid_from
-        timestamptz valid_to
-    }
-    dim_products {
-        bigint product_id PK
-        varchar product_category
-        numeric list_price_incl_vat
-        numeric unit_cost
-    }
-    dim_communes {
-        varchar commune_code PK
-        varchar commune_name
-        varchar department_name
-        float latitude
-        float longitude
-    }
-```
+<sub>Source du schéma : [docs/diagrams/modele-donnees.mmd](docs/diagrams/modele-donnees.mmd)</sub>
 
 | Couche | Contenu |
 |---|---|
@@ -198,15 +110,9 @@ Toute anomalie est signalée sur Slack :
 
 ## Déploiement
 
-```mermaid
-flowchart LR
-    A["Pull request"] --> B{"CI<br/>lint, ingestion,<br/>dbt build"}
-    B -->|succès| C["Merge sur main"]
-    C --> D["CD<br/>déploiement sur le VPS"]
-    D --> E["Lightdash en ligne<br/>(HTTPS)"]
-    B -->|échec| S["Alerte Slack"]
-    D -->|échec| S
-```
+![Chaîne d'intégration et de déploiement continus](docs/images/deploiement.png)
+
+<sub>Source du schéma : [docs/diagrams/deploiement.mmd](docs/diagrams/deploiement.mmd)</sub>
 
 En production, chaque service tourne dans un conteneur Docker avec une limite mémoire.
 Seul le dashboard est exposé, en HTTPS derrière un reverse proxy ; l'entrepôt et
@@ -270,6 +176,7 @@ Chaque graphique du dashboard répond à une question précise.
 ├── lightdash/          # Graphiques et dashboard versionnés en YAML
 ├── scripts/            # Alertes Slack et déploiement
 ├── notebooks/          # Exploration et contrôles
+├── docs/               # Captures et schémas (sources Mermaid dans docs/diagrams)
 └── .github/workflows/  # CI et CD
 ```
 
