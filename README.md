@@ -69,9 +69,10 @@ l'historisation des clients sur des données qui changent réellement.
 
 ## Modèle de données
 
-Modèle en étoile : deux tables de faits (commandes et ventes immobilières) partagent la
-dimension géographique, ce qui permet de croiser le chiffre d'affaires et le prix au m²
-d'une même commune.
+Modèle en constellation : plusieurs tables de faits (commandes, lignes de commande et
+ventes immobilières) partagent des dimensions communes. La dimension géographique
+`dim_communes`, commune aux commandes et aux ventes immobilières, permet de croiser le
+chiffre d'affaires et le prix au m² d'une même commune.
 
 ![Modèle de données : tables de faits et de dimensions](docs/images/modele-donnees.png)
 
