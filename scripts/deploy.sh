@@ -45,7 +45,8 @@ main() {
     in_airflow lightdash upload --path lightdash --force \
         --project "$LIGHTDASH_PROJECT_UUID"
     in_airflow lightdash validate --project "$LIGHTDASH_PROJECT_UUID" \
-        --project-dir dbt_project --profiles-dir dbt_project --target prod
+        --project-dir dbt_project --profiles-dir dbt_project \
+        --target prod --select marts
 
     echo "Activation du DAG quotidien"
     docker exec ecoshop-airflow airflow dags unpause ecoshop_quotidien \
