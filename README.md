@@ -213,18 +213,51 @@ Seul le dashboard est exposé, en HTTPS derrière un reverse proxy ; l'entrepôt
 l'interface Airflow ne sont pas accessibles depuis Internet. Les secrets restent sur le
 serveur et dans GitHub, jamais dans le code.
 
-## Aperçu du dashboard
+## Questions métier et dashboard
 
-| Onglet | Contenu |
+Chaque graphique du dashboard répond à une question précise.
+
+### Vue exécutive
+
+| Graphique | Question |
 |---|---|
-| Vue exécutive | CA, taux de marge, panier moyen, commandes, évolution mensuelle |
-| Cartographie France | CA par commune, prix médian au m² par commune et par département |
-| Clients et rétention | Segments, commandes par segment, top 10 des clients, fréquence d'achat |
-| Qualité et fraîcheur | Derniers chargements, volumes ingérés, tests en anomalie |
+| CA TTC | Combien la boutique a-t-elle vendu depuis son ouverture ? |
+| Taux de marge | Quelle part du chiffre d'affaires HT reste-t-il après le coût d'achat ? |
+| Panier moyen | Combien un client dépense-t-il en moyenne par commande ? |
+| Commandes | Combien de commandes ont été expédiées ou livrées ? |
+| CA mensuel | Le chiffre d'affaires et la marge progressent-ils d'un mois à l'autre ? |
+| CA par segment | Quels segments de clients génèrent le chiffre d'affaires au moment de l'achat ? |
+
+### Cartographie France
+
+| Graphique | Question |
+|---|---|
+| CA par commune | Dans quelles villes vivent les clients qui rapportent le plus ? |
+| Prix au m² par commune | Où l'immobilier est-il le plus cher dans les départements suivis ? |
+| Prix au m² par département | Combien coûte le m² d'un appartement ou d'une maison selon le département ? |
 
 ![Cartographie France](docs/images/lightdash-cartographie.jpg)
 
+### Clients et rétention
+
+| Graphique | Question |
+|---|---|
+| Clients par segment | Comment le portefeuille se répartit-il entre clients Standard, Premium et VIP ? |
+| Commandes par client | Combien de fois un client commande-t-il en moyenne ? |
+| Commandes par segment et par mois | La part des clients Premium et VIP progresse-t-elle dans les ventes ? |
+| Top 10 clients | Quels clients rapportent le plus de chiffre d'affaires ? |
+| Répartition du nombre de commandes | Les clients achètent-ils une seule fois ou de manière régulière ? |
+
 ![Clients et rétention](docs/images/lightdash-clients.png)
+
+### Qualité et fraîcheur
+
+| Graphique | Question |
+|---|---|
+| Dernier chargement | Les données de chaque source sont-elles à jour ? |
+| Volumes ingérés par jour | Le pipeline a-t-il chargé un volume habituel de données ? |
+| Tests en anomalie | Quels contrôles de qualité sont en échec ou en avertissement, et sur quelles tables ? |
+| Évolution de la qualité | La qualité des données se dégrade-t-elle au fil des jours ? |
 
 ![Qualité et fraîcheur](docs/images/lightdash-qualite.png)
 
