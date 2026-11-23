@@ -1,0 +1,29 @@
+flowchart LR
+    subgraph sources["Sources"]
+        A["Back-office EcoShop<br/>(simulé)"]
+        B["API Géo"]
+        C["DVF"]
+    end
+
+    D["dlt<br/>ingestion"]
+
+    subgraph pg["PostgreSQL"]
+        E["Bronze<br/>données brutes"]
+        F["Silver<br/>staging, intermediate, snapshots"]
+        G["Gold<br/>faits et dimensions"]
+    end
+
+    H["Lightdash<br/>dashboard"]
+    I["Slack<br/>alertes qualité"]
+    J["Airflow + Cosmos<br/>DAG quotidien"]
+
+    A --> D
+    B --> D
+    C --> D
+    D --> E
+    E -->|dbt| F
+    F -->|dbt| G
+    G --> H
+    G -.->|Elementary| I
+    J -.-> D
+    J -.-> F
