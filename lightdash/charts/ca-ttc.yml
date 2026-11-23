@@ -10,7 +10,7 @@ chartConfig:
   type: big_number
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: Chiffre d'affaires TTC des commandes expédiées ou livrées
+description: "Combien la boutique a-t-elle vendu depuis son ouverture ? Chiffre d'affaires TTC des commandes expédiées ou livrées."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

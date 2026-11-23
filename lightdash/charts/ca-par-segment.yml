@@ -21,9 +21,7 @@ chartConfig:
   type: cartesian
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >-
-  CA TTC selon le segment du client au moment de la commande (Standard, Premium,
-  VIP)
+description: "Quels segments de clients génèrent le chiffre d'affaires au moment de l'achat ? CA TTC selon le segment du client au moment de la commande (Standard, Premium, VIP)."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

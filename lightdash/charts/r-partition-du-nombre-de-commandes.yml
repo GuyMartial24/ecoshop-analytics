@@ -22,9 +22,7 @@ chartConfig:
   type: cartesian
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >
-  Nombre de clients selon leur nombre de commandes expédiées ou livrées : mesure
-  la fidélité et la fréquence d'achat.
+description: "Les clients achètent-ils une seule fois ou de manière régulière ? Nombre de clients selon leur nombre de commandes expédiées ou livrées : mesure la fidélité et la fréquence d'achat."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

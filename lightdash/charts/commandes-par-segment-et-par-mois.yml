@@ -60,9 +60,7 @@ chartConfig:
   type: cartesian
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >
-  Évolution mensuelle des commandes expédiées ou livrées, réparties selon le
-  segment du client au moment de l'achat (Standard, Premium, VIP).
+description: "La part des clients Premium et VIP progresse-t-elle dans les ventes ? Évolution mensuelle des commandes expédiées ou livrées, réparties selon le segment du client au moment de l'achat (Standard, Premium, VIP)."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

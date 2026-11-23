@@ -31,9 +31,7 @@ chartConfig:
   type: cartesian
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >-
-  Évolution mensuelle du CA TTC et de la marge, avec la variation par rapport au
-  mois précédent
+description: "Le chiffre d'affaires et la marge progressent-ils d'un mois à l'autre ? Évolution mensuelle du CA TTC et de la marge, avec la variation par rapport au mois précédent."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

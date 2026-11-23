@@ -24,7 +24,7 @@ chartConfig:
   type: map
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: " Prix médian au m² des appartements et maisons vendus seuls, hors prix aberrants, dans les communes d'au moins 20 ventes (source DVF)"
+description: "Où l'immobilier est-il le plus cher dans les départements suivis ? Prix médian au m² des appartements et maisons vendus seuls, hors prix aberrants, dans les communes d'au moins 20 ventes (source DVF)."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

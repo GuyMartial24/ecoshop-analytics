@@ -14,9 +14,7 @@ chartConfig:
   type: table
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >
-  Date et heure du dernier chargement de chaque source (back-office, API Géo,
-  DVF) : permet de vérifier que l'ingestion quotidienne a bien tourné.
+description: "Les données de chaque source sont-elles à jour ? Date et heure du dernier chargement de chaque source (back-office, API Géo, DVF) : permet de vérifier que l'ingestion quotidienne a bien tourné."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

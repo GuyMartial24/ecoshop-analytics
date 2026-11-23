@@ -10,7 +10,7 @@ chartConfig:
   type: big_number
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: "\tMontant TTC moyen d'une commande expédiée ou livrée"
+description: "Combien un client dépense-t-il en moyenne par commande ? Montant TTC moyen d'une commande expédiée ou livrée."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

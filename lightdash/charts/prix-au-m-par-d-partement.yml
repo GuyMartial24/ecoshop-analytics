@@ -52,7 +52,7 @@ chartConfig:
   type: cartesian
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: Prix médian au m² par département et par type de bien (appartement ou maison
+description: "Combien coûte le m² d'un appartement ou d'une maison selon le département ? Prix médian au m² par département et par type de bien (appartement ou maison."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

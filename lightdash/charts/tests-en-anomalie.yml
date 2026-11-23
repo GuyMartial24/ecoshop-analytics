@@ -29,9 +29,7 @@ chartConfig:
   type: table
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >-
-  Tests de qualité en échec ou en avertissement, avec la table, la colonne et le
-  nombre de lignes concernées, du plus récent au plus ancien.
+description: "Quels contrôles de qualité sont en échec ou en avertissement, et sur quelles tables ? Tests de qualité en échec ou en avertissement, avec la table, la colonne et le nombre de lignes concernées, du plus récent au plus ancien."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

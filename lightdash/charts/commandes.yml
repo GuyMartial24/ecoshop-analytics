@@ -10,9 +10,7 @@ chartConfig:
   type: big_number
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >-
-  Nombre de commandes expédiées ou livrées (hors commandes en attente, annulées
-  ou retournées)
+description: "Combien de commandes ont été expédiées ou livrées ? Nombre de commandes expédiées ou livrées (hors commandes en attente, annulées ou retournées)."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

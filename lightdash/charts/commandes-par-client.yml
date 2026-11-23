@@ -10,9 +10,7 @@ chartConfig:
   type: big_number
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >
-  Nombre moyen de commandes expédiées ou livrées par client, sur l'ensemble de
-  l'historique.
+description: "Combien de fois un client commande-t-il en moyenne ? Nombre moyen de commandes expédiées ou livrées par client, sur l'ensemble de l'historique."
 metricQuery:
   additionalMetrics: []
   customDimensions: []
