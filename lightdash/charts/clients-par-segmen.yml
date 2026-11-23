@@ -20,7 +20,7 @@ chartConfig:
   type: pie
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: Nombre de clients par segment actuel
+description: "Comment le portefeuille se répartit-il entre clients Standard, Premium et VIP ? Nombre de clients par segment actuel."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

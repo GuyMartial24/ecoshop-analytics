@@ -14,9 +14,7 @@ chartConfig:
   type: table
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >
-  Les 10 clients au chiffre d'affaires cumulé le plus élevé (commandes expédiées
-  ou livrées), avec leur segment actuel et leur nombre de commandes.
+description: "Quels clients rapportent le plus de chiffre d'affaires ? Les 10 clients au chiffre d'affaires cumulé le plus élevé (commandes expédiées ou livrées), avec leur segment actuel et leur nombre de commandes."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

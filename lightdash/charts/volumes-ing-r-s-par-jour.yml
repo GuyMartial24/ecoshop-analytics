@@ -32,9 +32,7 @@ chartConfig:
   type: cartesian
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >
-  Nombre de commandes et de clients chargés chaque jour depuis le back-office :
-  un creux inhabituel signale un problème d'ingestion.
+description: "Le pipeline a-t-il chargé un volume habituel de données ? Nombre de commandes et de clients chargés chaque jour depuis le back-office : un creux inhabituel signale un problème d'ingestion."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

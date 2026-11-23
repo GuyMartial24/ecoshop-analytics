@@ -33,9 +33,7 @@ chartConfig:
   type: cartesian
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >
-  Nombre quotidien de tests en échec et en avertissement : une hausse soudaine
-  signale une dégradation de la qualité des données.
+description: "La qualité des données se dégrade-t-elle au fil des jours ? Nombre quotidien de tests en échec et en avertissement : une hausse soudaine signale une dégradation de la qualité des données."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

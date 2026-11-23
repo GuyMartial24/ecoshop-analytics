@@ -10,7 +10,7 @@ chartConfig:
   type: big_number
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: Marge rapportée au chiffre d'affaires HT des commandes expédiées ou livrées.
+description: "Quelle part du chiffre d'affaires HT reste-t-il après le coût d'achat ? Marge rapportée au chiffre d'affaires HT des commandes expédiées ou livrées."
 metricQuery:
   additionalMetrics: []
   customDimensions: []

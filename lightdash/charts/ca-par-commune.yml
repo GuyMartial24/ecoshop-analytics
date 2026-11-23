@@ -23,9 +23,7 @@ chartConfig:
   type: map
 contentType: chart
 dashboardSlug: vue-ex-cutive
-description: >-
-  Chiffre d'affaires TTC par commune du client au moment de la commande. Taille
-  : CA TTC ; couleur : nombre de commandes.
+description: "Dans quelles villes vivent les clients qui rapportent le plus ? Chiffre d'affaires TTC par commune du client au moment de la commande. Taille : CA TTC ; couleur : nombre de commandes."
 metricQuery:
   additionalMetrics: []
   customDimensions: []
