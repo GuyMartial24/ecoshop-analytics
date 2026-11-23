@@ -1,51 +1,48 @@
 # EcoShop Analytics
-> Plateforme analytique e-commerce & immobilière (DVF) — dlt · dbt · PostgreSQL · Lightdash
+
+Plateforme analytique de bout en bout : ingestion, modélisation, orchestration,
+restitution et déploiement continu.
+**dlt · PostgreSQL · dbt · Airflow · Lightdash · GitHub Actions**
 
 ## Démo en ligne
 
-Le tableau de bord de production est consultable en lecture seule :
-
-**https://ecoshop-analytics.duckdns.org**
+**https://ecoshop-analytics.duckdns.org** (lecture seule)
 
 | Identifiant | Mot de passe |
 |---|---|
 | `demo@ecoshop-analytics.duckdns.org` | `EcoShopDemo2026` |
 
-Ouvrir le dashboard **EcoShop Analytics** (onglets Vue exécutive, Cartographie France,
-Clients et rétention, Qualité et fraîcheur). Les données sont rechargées chaque nuit
-par le pipeline :
-
-- **transactions immobilières DVF** et **référentiel des communes** : données réelles et
-  publiques (data.gouv.fr, API Géo) ;
-- **commandes et clients EcoShop** : données simulées par un générateur qui reproduit un
-  back-office vivant (nouvelles commandes, changements de statut, de segment et d'adresse).
-
-### Aperçu
-
-**Vue exécutive** : chiffres clés, CA mensuel et CA par segment de client.
+Ouvrir le dashboard **EcoShop Analytics**. Les données sont mises à jour chaque nuit.
 
 ![Vue exécutive](docs/images/lightdash-vue-executive.png)
 
-**Cartographie France** : CA par commune et prix médian au m² des ventes immobilières.
+## Contexte et objectif
 
-![Cartographie France](docs/images/lightdash-cartographie.jpg)
+EcoShop est une boutique en ligne française fictive. Sa direction veut suivre son
+activité (chiffre d'affaires, marge, clients) et la mettre en regard du marché
+immobilier des villes où vivent ses clients.
 
-**Clients et rétention** : segments, commandes par segment au moment de l'achat,
-top 10 des clients et fréquence d'achat.
+L'objectif du projet est de construire une chaîne de données complète et automatisée :
 
-![Clients et rétention](docs/images/lightdash-clients.png)
+- **ingérer** trois sources hétérogènes (back-office, API, fichiers Open Data) ;
+- **modéliser** les données en couches (Bronze, Silver, Gold) jusqu'à un modèle
+  dimensionnel testé et historisé ;
+- **orchestrer** le traitement chaque nuit et **alerter** en cas d'anomalie ;
+- **restituer** les indicateurs dans un dashboard accessible en ligne ;
+- **déployer** automatiquement chaque évolution validée.
 
-![Top 10 clients et fréquence d'achat](docs/images/lightdash-top-clients.png)
+## Jeux de données
 
-**Qualité et fraîcheur** : derniers chargements, volumes ingérés et suivi des tests.
+| Source | Nature | Contenu | Volume |
+|---|---|---|---|
+| Back-office EcoShop | Simulée | Clients, produits, commandes et lignes de commande depuis janvier 2025 | 500 clients, 80 produits, environ 21 000 commandes |
+| [API Géo](https://geo.api.gouv.fr) | Réelle, API publique | Communes, départements et régions de France, avec population et coordonnées GPS | 35 000 communes |
+| [DVF géolocalisées](https://files.data.gouv.fr/geo-dvf/) | Réelle, Open Data | Ventes immobilières 2024-2025 de Paris, du Rhône et de la Gironde | 515 000 lignes, 200 000 ventes |
 
-![Qualité et fraîcheur](docs/images/lightdash-qualite.png)
-
-## Objectif
-
-Projet d'Analytics Engineering de bout en bout : ingestion de trois sources (un back-office
-e-commerce simulé, le référentiel géographique officiel et les transactions immobilières
-réelles DVF), transformation avec dbt et restitution dans des dashboards Lightdash.
+Le back-office est produit par un simulateur déterministe qui fait évoluer les données
+dans le temps : nouvelles commandes, changements de statut, montée en gamme et
+déménagement des clients. Il permet de mettre en œuvre le chargement incrémental et
+l'historisation des clients sur des données qui changent réellement.
 
 ## Architecture
 
@@ -53,20 +50,20 @@ réelles DVF), transformation avec dbt et restitution dans des dashboards Lightd
 flowchart LR
     subgraph sources["Sources"]
         A["Back-office EcoShop<br/>(simulé)"]
-        B["API Géo<br/>geo.api.gouv.fr"]
-        C["DVF<br/>data.gouv.fr"]
+        B["API Géo"]
+        C["DVF"]
     end
 
     D["dlt<br/>ingestion"]
 
     subgraph pg["PostgreSQL"]
-        E["Bronze<br/>raw_ecoshop, raw_geo, raw_dvf"]
+        E["Bronze<br/>données brutes"]
         F["Silver<br/>staging, intermediate, snapshots"]
-        G["Gold<br/>marts (modèle en étoile)"]
+        G["Gold<br/>faits et dimensions"]
     end
 
     H["Lightdash<br/>dashboard"]
-    I["Slack<br/>#data-alerts"]
+    I["Slack<br/>alertes qualité"]
     J["Airflow + Cosmos<br/>DAG quotidien"]
 
     A --> D
@@ -81,349 +78,160 @@ flowchart LR
     J -.-> F
 ```
 
-## Stack technique
-
 | Rôle | Outil |
 |---|---|
-| Ingestion | dlt (data load tool) |
+| Ingestion | dlt |
 | Entrepôt | PostgreSQL 16 |
-| Transformation | dbt Core 1.12 (adaptateur PostgreSQL) |
-| BI | Lightdash (+ stockage S3 SeaweedFS en local) |
-| Orchestration | Airflow 3.3.2 + Astronomer Cosmos 1.16 |
-| Infra | Docker Compose, GitHub Actions, VPS |
+| Transformation et tests | dbt Core 1.12, dbt_utils, Elementary |
+| Orchestration | Airflow 3.3 + Astronomer Cosmos |
+| Restitution | Lightdash (couche sémantique définie dans dbt) |
+| Infrastructure | Docker Compose, GitHub Actions, VPS |
 
-## Sources de données
+## Modèle de données
 
-| Source | Type | Schéma | Stratégie de chargement |
-|---|---|---|---|
-| Back-office EcoShop | Simulée (Faker, déterministe et évolutive) | `raw_ecoshop` | `merge` incrémental sur `updated_at` (clients, commandes), `replace` (produits) |
-| [API Géo](https://geo.api.gouv.fr) | API REST publique | `raw_geo` | `replace` (référentiel complet) |
-| [DVF géolocalisées](https://files.data.gouv.fr/geo-dvf/) | Fichiers CSV Open Data | `raw_dvf` | Incrémental par fichier (`Last-Modified`) + remplacement par partition (`delete-insert`) |
+Modèle en étoile : deux tables de faits (commandes et ventes immobilières) partagent la
+dimension géographique, ce qui permet de croiser le chiffre d'affaires et le prix au m²
+d'une même commune.
 
-Les années et départements DVF se règlent dans `.dlt/config.toml` (section `[sources.dvf]`).
+```mermaid
+erDiagram
+    fct_orders ||--|{ fct_order_items : "contient"
+    dim_customers ||--o{ fct_orders : "passe"
+    dim_customers_history ||--o{ fct_orders : "version à la commande"
+    dim_products ||--o{ fct_order_items : "concerne"
+    dim_communes ||--o{ fct_orders : "commune du client"
+    dim_communes ||--o{ fct_dvf_sales : "commune du bien"
 
-## Démarrage rapide
-
-Prérequis : Docker Desktop, Python 3.12 et [uv](https://docs.astral.sh/uv/).
-
-```bash
-# 1. Variables d'environnement (puis remplacer les valeurs "change_me")
-cp .env.example .env
-
-# 2. Stack locale : entrepôt PostgreSQL, Lightdash et son stockage S3
-docker compose up -d
-
-# 3. Dépendances Python
-uv sync
-
-# 4. Identifiants dlt : créer .dlt/secrets.toml (non versionné)
-#    [destination.postgres.credentials]
-#    database = "ecoshop_dw"
-#    username = "ecoshop"
-#    password = "<WAREHOUSE_PASSWORD du .env>"
-#    host = "localhost"
-#    port = 5433
-
-# 5. Ingestion des trois sources
-uv run python pipelines/run_all.py
+    fct_orders {
+        varchar order_id PK
+        bigint customer_id FK
+        text customer_version_id FK
+        varchar commune_code FK
+        date order_date
+        varchar order_status
+        numeric net_amount_incl_vat
+        numeric margin_amount
+    }
+    fct_order_items {
+        varchar order_item_id PK
+        varchar order_id FK
+        bigint product_id FK
+        int quantity
+        numeric net_amount_incl_vat
+        numeric margin_amount
+    }
+    fct_dvf_sales {
+        varchar mutation_id PK
+        varchar commune_code FK
+        date mutation_date
+        varchar sale_category
+        numeric property_value
+        numeric price_per_m2
+    }
+    dim_customers {
+        bigint customer_id PK
+        varchar customer_segment
+        varchar commune_code FK
+        numeric lifetime_revenue_incl_vat
+    }
+    dim_customers_history {
+        text customer_version_id PK
+        bigint customer_id FK
+        varchar customer_segment
+        varchar commune_code
+        timestamptz valid_from
+        timestamptz valid_to
+    }
+    dim_products {
+        bigint product_id PK
+        varchar product_category
+        numeric list_price_incl_vat
+        numeric unit_cost
+    }
+    dim_communes {
+        varchar commune_code PK
+        varchar commune_name
+        varchar department_name
+        float latitude
+        float longitude
+    }
 ```
 
-Lightdash est ensuite accessible sur http://localhost:8080.
-
-## Transformations dbt
-
-Les commandes se lancent depuis `dbt_project/`. L'option `--env-file` de uv charge les
-identifiants du `.env`, lus par `profiles.yml` via `env_var()` (aucun secret versionné).
-
-```bash
-cd dbt_project
-
-uv run --env-file ../.env dbt deps              # installe les packages (dbt_utils, elementary)
-uv run --env-file ../.env dbt debug             # vérifie la connexion
-uv run --env-file ../.env dbt source freshness  # contrôle la fraîcheur des sources
-uv run --env-file ../.env dbt build             # seeds, modèles, snapshots et tests dans l'ordre du DAG
-uv run --env-file ../.env dbt test --select "test_type:unit"   # tests unitaires seuls
-uv run --env-file ../.env dbt docs generate     # documentation et lignage
-uv run --env-file ../.env dbt docs serve --port 8081
-```
-
-| Couche | Schéma | Matérialisation | Rôle |
-|---|---|---|---|
-| Seeds | `seeds` | table | Référentiels maintenus à la main (statuts de commande) |
-| Snapshots | `snapshots` | snapshot (SCD2) | Historique des clients (segment, adresse) |
-| Staging | `staging` | view | Nettoyage, typage, renommage : un modèle par table source |
-| Intermediate | `intermediate` | view / ephemeral | Jointures, calculs et règles métier réutilisables |
-| Marts | `marts` | table | Modèle en étoile exposé à Lightdash |
-
-### Modèle en étoile (schéma `marts`)
-
-| Modèle | Grain | Contenu |
-|---|---|---|
-| `dim_customers` | 1 client | Segment, commune, indicateurs de cycle de vie (sans donnée personnelle directe) |
-| `dim_customers_history` | 1 version de client | Historique SCD2 : segment et commune sur chaque période de validité |
-| `dim_products` | 1 produit | Prix TTC et HT, coût, marge unitaire |
-| `dim_communes` | 1 commune | Département, région, population, coordonnées GPS |
-| `fct_orders` | 1 commande | Montants, marge, segment et commune du client à la date de la commande ; incrémental (merge) et contrat appliqué |
-| `fct_order_items` | 1 article | Détail par produit et catégorie |
-| `fct_dvf_sales` | 1 vente immobilière | Prix, surface, prix au m² des ventes de référence |
-
-Règles de calcul : les prix catalogue sont TTC ; la marge est calculée sur le HT
-(macro `amount_excl_vat`, taux de TVA dans la variable `vat_rate`). Pour DVF, le prix
-au m² n'est calculé que sur les ventes simples d'un seul logement, et les valeurs hors
-bornes (variables `dvf_min_price_per_m2` et `dvf_max_price_per_m2`) sont signalées.
-
-Les schémas sont nommés par la macro `generate_schema_name` : noms simples en `dev` et
-`prod`, préfixés en CI (ex. `ci_pr_12_staging`) pour isoler chaque exécution.
-
-### Historique des clients
-
-Le snapshot `snap_customers` historise les changements de segment et d'adresse. Pour
-reconstituer l'historique depuis le début des données en développement, le script
-`pipelines/replay_history.py` repart d'un schéma brut vide et rejoue la source mois par
-mois (ingestion puis snapshot). Il efface `raw_ecoshop` : il ne doit jamais être lancé
-en production, où l'historique s'accumule à chaque exécution quotidienne.
-
-## Qualité des données
-
-| Type de test | Exemples |
+| Couche | Contenu |
 |---|---|
-| Génériques | `unique`, `not_null`, `accepted_values`, `relationships` |
-| Packages | `dbt_utils.expression_is_true`, `accepted_range`, `unique_combination_of_columns` |
-| Générique personnalisé | `positive_value` (prix, coûts, quantités, prix au m²) |
-| Singuliers | Pas de vente à perte sans remise ; part des commandes à perte sous 10 % ; continuité de l'historique SCD2 |
-| Unitaires | Calcul des montants et de la marge ; grain vente et prix au m² DVF |
-| Anomalies (Elementary) | Volume de commandes par jour comparé aux 30 jours précédents |
+| Bronze | Tables chargées par dlt, sans transformation |
+| Silver | Nettoyage et typage (staging), règles métier (intermediate), historique des clients (snapshot SCD2) |
+| Gold | Faits et dimensions ci-dessus, exposés à Lightdash |
 
-Observabilité : le package Elementary enregistre le résultat de chaque exécution dans le
-schéma `elementary`. Les alertes sont publiées en français sur Slack par un script dédié
-(le webhook est lu dans `SLACK_WEBHOOK_URL`, variable du `.env`) :
+## Points clés
 
-```bash
-uv run python scripts/slack_alerts.py --apercu   # affiche le message sans l'envoyer
-uv run python scripts/slack_alerts.py            # envoie une alerte en cas d'anomalie
+- **Chargement incrémental** : fusion sur clé pour le back-office, remplacement par
+  fichier pour DVF (republié chaque semestre), référentiel rechargé en entier.
+- **Historisation SCD2** des clients : chaque commande est rattachée au segment et à
+  l'adresse du client à la date de l'achat.
+- **Table de faits incrémentale** avec contrat de modèle (colonnes et types garantis).
+- **Qualité** : plus de 100 tests (génériques, métier, unitaires, détection
+  d'anomalie de volume) et contrôle de fraîcheur des sources.
+- **Observabilité** : résultats historisés par Elementary, alertes Slack en français.
+- **Orchestration** : une tâche Airflow par modèle dbt grâce à Cosmos.
+- **CI/CD** : chaque pull request est testée sur une base vide ; chaque merge est
+  déployé automatiquement en production.
 
-cd dbt_project
-uv run --env-file ../.env edr report --project-dir . --profiles-dir .   # rapport HTML
-```
+## Orchestration et alertes
 
-Exemples d'alertes reçues sur `#data-alerts` : synthèse qualité d'une exécution dbt,
-échec d'une tâche Airflow, puis synthèse du run quotidien.
+Le DAG `ecoshop_quotidien` s'exécute chaque nuit : ingestion, contrôle de fraîcheur,
+transformations dbt (une tâche par modèle, suivie de ses tests), puis synthèse qualité.
+
+![DAG Airflow rendu par Cosmos](docs/images/dag-airflow-cosmos.png)
+
+Toute anomalie est signalée sur Slack :
 
 ![Alertes qualité sur Slack](docs/images/alertes-slack.png)
 
-## Orchestration (Airflow + Cosmos)
+## Déploiement
 
-Airflow tourne en local dans un profil Docker Compose dédié, lancé uniquement à la
-demande. Sa configuration reproduit celle de production : Airflow 3.3.2, mode
-`standalone`, LocalExecutor et métadonnées dans PostgreSQL.
-
-```bash
-docker compose --profile airflow up -d --build   # interface : http://localhost:8082
-docker compose --profile airflow stop            # arrêt (libère la mémoire)
+```mermaid
+flowchart LR
+    A["Pull request"] --> B{"CI<br/>lint, ingestion,<br/>dbt build"}
+    B -->|succès| C["Merge sur main"]
+    C --> D["CD<br/>déploiement sur le VPS"]
+    D --> E["Lightdash en ligne<br/>(HTTPS)"]
+    B -->|échec| S["Alerte Slack"]
+    D -->|échec| S
 ```
 
-Le DAG `ecoshop_quotidien` s'exécute chaque nuit à 2 h (UTC) :
+En production, chaque service tourne dans un conteneur Docker avec une limite mémoire.
+Seul le dashboard est exposé, en HTTPS derrière un reverse proxy ; l'entrepôt et
+l'interface Airflow ne sont pas accessibles depuis Internet. Les secrets restent sur le
+serveur et dans GitHub, jamais dans le code.
 
-```
-ingestion_dlt -> fraicheur_sources -> transformations_dbt (Cosmos) -> alertes_qualite_slack
-```
-
-| Tâche | Rôle |
-|---|---|
-| `ingestion_dlt` | Chargement des trois sources (`pipelines/run_all.py`), deux nouvelles tentatives en cas d'échec |
-| `fraicheur_sources` | `dbt source freshness` ; envoie aussi, une fois par run, les métadonnées du projet à Elementary |
-| `transformations_dbt` | Projet dbt rendu par Cosmos : une tâche par seed, modèle et snapshot, suivie de ses tests ; les tests portant sur plusieurs modèles sont des tâches à part |
-| `alertes_qualite_slack` | Synthèse qualité du run en français, exécutée même si une étape a échoué |
-
-Graphe du DAG dans Airflow : chaque modèle dbt est une tâche, suivie de ses tests.
-
-![DAG ecoshop_quotidien rendu par Cosmos](docs/images/dag-airflow-cosmos.png)
-
-Toute tâche en échec publie également une alerte Slack en français. L'image Airflow
-contient deux environnements Python séparés : celui d'Airflow (avec Cosmos) et
-`/opt/ecoshop-venv`, construit depuis `uv.lock`, où dbt et dlt s'exécutent en
-sous-processus, sans conflit de dépendances.
-
-## Tableau de bord (Lightdash)
-
-La couche sémantique (libellés, métriques, formats, jointures) est définie dans
-`dbt_project/models/marts/_marts.yml` (blocs `meta`). Le dashboard
-**EcoShop Analytics** comporte quatre onglets :
+## Aperçu du dashboard
 
 | Onglet | Contenu |
 |---|---|
-| Vue exécutive | CA TTC, taux de marge, panier moyen, commandes, CA mensuel, CA par segment |
-| Cartographie France | CA par commune, prix médian au m² DVF par commune et par département |
-| Clients et rétention | Segments, top 10 clients, fréquence d'achat, commandes par segment et par mois |
-| Qualité et fraîcheur | Derniers chargements, volumes ingérés, tests en anomalie, évolution de la qualité |
+| Vue exécutive | CA, taux de marge, panier moyen, commandes, évolution mensuelle |
+| Cartographie France | CA par commune, prix médian au m² par commune et par département |
+| Clients et rétention | Segments, commandes par segment, top 10 des clients, fréquence d'achat |
+| Qualité et fraîcheur | Derniers chargements, volumes ingérés, tests en anomalie |
 
-Les graphiques et le dashboard sont versionnés en YAML dans `lightdash/`.
-Les commandes se lancent depuis la racine, avec les variables du `.env` chargées
-et le venv activé (la CLI exécute dbt) :
+![Cartographie France](docs/images/lightdash-cartographie.jpg)
 
-```bash
-npx @lightdash/cli@3.361.0 login http://localhost:8080 --token $LIGHTDASH_API_KEY
+![Clients et rétention](docs/images/lightdash-clients.png)
 
-# Couche sémantique : déploie les modèles marts
-npx @lightdash/cli@3.361.0 deploy --project-dir dbt_project \
-    --profiles-dir dbt_project --target dev --select marts
-
-# Graphiques et dashboards : export depuis Lightdash, ou envoi vers Lightdash
-npx @lightdash/cli@3.361.0 download --path lightdash
-npx @lightdash/cli@3.361.0 upload --path lightdash --force
-```
-
-Lightdash interroge l'entrepôt via la cible `lightdash` de `profiles.yml`
-(`warehouse:5432`, réseau Docker), enregistrée avec `lightdash set-warehouse`.
-
-## Intégration continue (GitHub Actions)
-
-```mermaid
-flowchart LR
-    A["Commit sur develop"] --> B["Pull request<br/>vers main"]
-    B --> C{"CI<br/>ruff, ingestion,<br/>dbt build"}
-    C -->|échec| S["Alerte Slack"]
-    C -->|succès| D["Merge sur main"]
-    D --> E["CD<br/>scripts/deploy.sh<br/>sur le VPS"]
-    E -->|échec| S
-```
-
-Le workflow `.github/workflows/ci.yml` s'exécute sur chaque pull request vers
-`main` et sur chaque push sur `develop` :
-
-| Job | Contenu |
-|---|---|
-| Qualité du code | `ruff check` et `ruff format --check` |
-| Ingestion et dbt build | PostgreSQL vide (service GitHub Actions), ingestion des trois sources, `dbt build` et `dbt source freshness` dans des schémas `ci_pr_<numéro>_*` |
-| Alerte Slack | Message en français sur `#data-alerts` si un job échoue (secret `SLACK_WEBHOOK_URL`) |
-
-En CI, la source DVF est limitée à Paris 2025 pour réduire la durée du run.
-
-## Production
-
-Le projet tourne sur un VPS Linux ARM (Oracle Cloud), dans
-`~/Projets_en_Production/ecoshop-analytics` :
-
-```mermaid
-flowchart LR
-    V["Visiteur"] -->|HTTPS| P["Caddy<br/>reverse proxy"]
-    G["GitHub Actions<br/>(CD)"] -->|SSH, clé restreinte| DS["scripts/deploy.sh"]
-
-    subgraph vps["VPS (conteneurs Docker)"]
-        L["Lightdash<br/>IP privée"]
-        W[("PostgreSQL<br/>entrepôt")]
-        AF["Airflow + Cosmos<br/>DAG quotidien, 2 h UTC"]
-        S3["SeaweedFS<br/>stockage S3"]
-    end
-
-    P --> L
-    L --> W
-    L --> S3
-    AF -->|dlt, dbt| W
-    DS --> AF
-    DS --> L
-```
-
-| Élément | Configuration |
-|---|---|
-| Conteneurs | `docker-compose.yml` + `docker-compose.prod.yml` (limites mémoire, aucun port public) |
-| Lightdash | Publié en HTTPS par le reverse proxy ; image arm64 construite depuis les sources |
-| Airflow | Interface accessible uniquement par tunnel SSH, au plus 4 tâches simultanées |
-| Secrets | `.env` généré sur le serveur (droits 600), jamais versionné |
-
-**Déploiement continu** (`.github/workflows/cd.yml`) : à chaque merge sur `main`,
-GitHub Actions se connecte au VPS avec une clé SSH restreinte au seul script
-`scripts/deploy.sh`, qui :
-
-1. récupère `main` et reconstruit les conteneurs ;
-2. lance `dbt deps` et `dbt build --target prod` ;
-3. redéploie la couche sémantique (`lightdash deploy`) et les dashboards
-   (`lightdash upload`), puis les valide (`lightdash validate`).
-
-En cas d'échec, une alerte est envoyée sur Slack.
-
-**Image Lightdash pour ARM** : l'image officielle n'existe qu'en amd64. À chaque
-changement de version de Lightdash, reconstruire l'image sur le serveur :
-
-```bash
-scripts/build_lightdash_arm64.sh 3.361.0   # environ 40 minutes
-```
-
-**Accès à l'interface Airflow de production** (tunnel SSH) :
-
-```bash
-ssh -N -L 8092:127.0.0.1:8082 <hôte du VPS>   # puis http://localhost:8092
-```
-
-## Notebooks
-
-| Notebook | Contenu |
-|---|---|
-| `notebooks/01_apercu_sources.ipynb` | Aperçu du simulateur et d'un fichier DVF avec les fonctions des pipelines |
-| `notebooks/02_controle_marts.ipynb` | Indicateurs, CA mensuel et prix au m² à partir des marts |
-
-Le code exécuté en production reste dans les fichiers `.py` ; les notebooks
-importent ces fichiers ou interrogent l'entrepôt.
-
-## Qualité du code
-
-Le code Python suit PEP 8 (lignes de 79 caractères), vérifié avec ruff :
-
-```bash
-uv run ruff check .
-uv run ruff format --check .
-```
+![Qualité et fraîcheur](docs/images/lightdash-qualite.png)
 
 ## Structure du dépôt
 
 ```
-├── .github/workflows/
-│   ├── ci.yml                # Intégration continue
-│   └── cd.yml                # Déploiement continu sur le VPS
-├── docker-compose.prod.yml   # Surcharges de production
-├── docker-compose.yml        # Stack locale (PostgreSQL, Lightdash, S3) et profil airflow
-├── airflow/
-│   ├── Dockerfile            # Airflow 3.3.2 + Cosmos, environnement dbt/dlt isolé
-│   └── dags/
-│       └── ecoshop_daily.py  # DAG quotidien ecoshop_quotidien
-├── .dlt/config.toml          # Configuration dlt (non sensible)
-├── pipelines/
-│   ├── fake_data.py          # Simulateur du back-office e-commerce
-│   ├── ecoshop_pipeline.py   # Source 1 : e-commerce -> raw_ecoshop
-│   ├── geo_pipeline.py       # Source 2 : API Géo -> raw_geo
-│   ├── dvf_pipeline.py       # Source 3 : DVF -> raw_dvf
-│   ├── run_all.py            # Point d'entrée unique de l'ingestion
-│   └── replay_history.py     # Rejeu de l'historique (développement uniquement)
-├── scripts/
-│   ├── slack_alerts.py       # Alertes qualité en français sur Slack
-│   ├── deploy.sh             # Déploiement en production
-│   └── build_lightdash_arm64.sh  # Image Lightdash pour le VPS ARM
-├── notebooks/                # Exploration et contrôles (Jupyter)
-├── docs/images/              # Captures d'écran du README
-├── lightdash/                # Graphiques et dashboard Lightdash (YAML)
-└── dbt_project/
-    ├── dbt_project.yml       # Couches, schémas, matérialisations et variables
-    ├── profiles.yml          # Connexions dev / ci / prod / elementary (variables d'environnement)
-    ├── packages.yml          # dbt_utils, elementary (versions figées dans package-lock.yml)
-    ├── macros/               # generate_schema_name, macros financières, surcharge snapshot
-    ├── seeds/                # order_status_mapping.csv
-    ├── snapshots/            # snap_customers (SCD2)
-    ├── tests/                # tests singuliers et test générique positive_value
-    └── models/
-        ├── staging/          # ecoshop/, geo/, dvf/ : sources, modèles et tests
-        ├── intermediate/     # valorisation, géolocalisation, ventes DVF, tests unitaires
-        └── marts/            # dimensions et faits exposés à Lightdash
+├── pipelines/          # Ingestion dlt (trois sources) et simulateur du back-office
+├── dbt_project/        # Modèles, tests, snapshot, macros et couche sémantique
+├── airflow/            # Image Airflow et DAG quotidien
+├── lightdash/          # Graphiques et dashboard versionnés en YAML
+├── scripts/            # Alertes Slack et déploiement
+├── notebooks/          # Exploration et contrôles
+└── .github/workflows/  # CI et CD
 ```
 
-## Avancement
+## Auteur
 
-- [x] Étape 0 : initialisation du dépôt
-- [x] Étape 1 : stack Docker locale
-- [x] Étape 2 : ingestion dlt (3 sources)
-- [x] Étape 3 : fondations dbt (sources, fraîcheur, staging, seed, tests)
-- [x] Étape 4 : modélisation métier (packages, macros, intermediate, marts en étoile, contrat)
-- [x] Étape 5 : dbt avancé (snapshot SCD2, incrémental, tests singuliers et unitaires, Elementary, alertes Slack)
-- [x] Étape 6 : orchestration Airflow + Cosmos (DAG quotidien, alertes Slack en français)
-- [x] Étape 7 : couche sémantique et dashboard Lightdash (4 onglets, versionné en YAML)
-- [x] Étape 8 : intégration continue GitHub Actions (ruff, ingestion, dbt build, alerte Slack)
-- [x] Étape 9 : déploiement sur VPS (HTTPS, Airflow quotidien, déploiement continu)
+**Martial GADJEU** | Data & AI Engineer
