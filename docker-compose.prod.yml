@@ -41,4 +41,4 @@ services:
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "false"
       # Au plus 4 tâches simultanées (une exécution dbt par tâche Cosmos)
       AIRFLOW__CORE__PARALLELISM: "4"
-    mem_limit: 2g
+    mem_limit: 3g
