@@ -1,0 +1,44 @@
+# Surcharges pour le VPS de production :
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#       --profile airflow up -d --build
+
+services:
+
+  warehouse:
+    ports: !reset []
+    mem_limit: 1g
+
+  lightdash-db:
+    mem_limit: 512m
+
+  s3:
+    mem_limit: 512m
+
+  # Écoute sur l'IP privée du VPS : publié en HTTPS par le reverse proxy.
+  # Image officielle disponible seulement en amd64 : image arm64 construite
+  # sur le VPS avec scripts/build_lightdash_arm64.sh
+  lightdash:
+    image: ecoshop/lightdash:3.361.0-arm64
+    ports: !override
+      - "${LIGHTDASH_BIND_IP}:${LIGHTDASH_PORT}:8080"
+    environment:
+      SECURE_COOKIES: "true"
+      TRUST_PROXY: "true"
+    mem_limit: 1536m
+
+  airflow-db:
+    mem_limit: 512m
+
+  # Interface Airflow accessible uniquement par tunnel SSH.
+  # Lancé avec l'uid de l'utilisateur du serveur (convention Airflow) pour
+  # pouvoir écrire dans le projet monté et lire le .env
+  airflow:
+    user: "${AIRFLOW_UID}:0"
+    ports: !override
+      - "127.0.0.1:${AIRFLOW_PORT}:8080"
+    environment:
+      DBT_TARGET: prod
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS: "false"
+      # Au plus 4 tâches simultanées (une exécution dbt par tâche Cosmos)
+      AIRFLOW__CORE__PARALLELISM: "4"
+    mem_limit: 3g

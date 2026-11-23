@@ -47,6 +47,7 @@ ecoshop:
       dbname: "{{ env_var('WAREHOUSE_DB') }}"
       schema: analytics
       threads: 4
+      sslmode: disable  # réseau Docker interne
 
 # Profil utilisé par la CLI Elementary (edr)
 elementary:

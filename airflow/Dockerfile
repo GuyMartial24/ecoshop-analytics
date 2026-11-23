@@ -15,4 +15,11 @@ RUN cd /tmp/ecoshop \
        uv sync --frozen --no-install-project --no-dev --no-cache \
     && chown -R airflow: /opt/ecoshop-venv \
     && rm -rf /tmp/ecoshop
+
+# Node.js et CLI Lightdash, pour déployer la couche sémantique et les
+# dashboards depuis le serveur (la CLI a besoin de dbt, présent dans le venv)
+COPY --from=node:24.22.1-trixie-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:24.22.1-trixie-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && npm install -g --no-fund --no-audit @lightdash/cli@3.361.0
 USER airflow

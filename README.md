@@ -1,6 +1,25 @@
 # EcoShop Analytics
 > Plateforme analytique e-commerce & immobilière (DVF) — dlt · dbt · PostgreSQL · Lightdash
 
+## Démo en ligne
+
+Le tableau de bord de production est consultable en lecture seule :
+
+**https://ecoshop-analytics.duckdns.org**
+
+| Identifiant | Mot de passe |
+|---|---|
+| `demo@ecoshop-analytics.duckdns.org` | `EcoShopDemo2026` |
+
+Ouvrir le dashboard **EcoShop Analytics** (onglets Vue exécutive, Cartographie France,
+Clients et rétention, Qualité et fraîcheur). Les données sont rechargées chaque nuit
+par le pipeline :
+
+- **transactions immobilières DVF** et **référentiel des communes** : données réelles et
+  publiques (data.gouv.fr, API Géo) ;
+- **commandes et clients EcoShop** : données simulées par un générateur qui reproduit un
+  back-office vivant (nouvelles commandes, changements de statut, de segment et d'adresse).
+
 ## Objectif
 
 Projet d'Analytics Engineering de bout en bout : ingestion de trois sources (un back-office
@@ -222,6 +241,48 @@ Le workflow `.github/workflows/ci.yml` s'exécute sur chaque pull request vers
 
 En CI, la source DVF est limitée à Paris 2025 pour réduire la durée du run.
 
+## Production
+
+Le projet tourne sur un VPS Linux ARM (Oracle Cloud), dans
+`~/Projets_en_Production/ecoshop-analytics` :
+
+```
+Internet ── HTTPS ──> Caddy (reverse proxy) ──> Lightdash (IP privée du VPS)
+                                                    │
+     Airflow (DAG quotidien, 2 h UTC) ──> dlt ──> PostgreSQL <── dbt (Cosmos)
+```
+
+| Élément | Configuration |
+|---|---|
+| Conteneurs | `docker-compose.yml` + `docker-compose.prod.yml` (limites mémoire, aucun port public) |
+| Lightdash | Publié en HTTPS par le reverse proxy ; image arm64 construite depuis les sources |
+| Airflow | Interface accessible uniquement par tunnel SSH, au plus 4 tâches simultanées |
+| Secrets | `.env` généré sur le serveur (droits 600), jamais versionné |
+
+**Déploiement continu** (`.github/workflows/cd.yml`) : à chaque merge sur `main`,
+GitHub Actions se connecte au VPS avec une clé SSH restreinte au seul script
+`scripts/deploy.sh`, qui :
+
+1. récupère `main` et reconstruit les conteneurs ;
+2. lance `dbt deps` et `dbt build --target prod` ;
+3. redéploie la couche sémantique (`lightdash deploy`) et les dashboards
+   (`lightdash upload`), puis les valide (`lightdash validate`).
+
+En cas d'échec, une alerte est envoyée sur Slack.
+
+**Image Lightdash pour ARM** : l'image officielle n'existe qu'en amd64. À chaque
+changement de version de Lightdash, reconstruire l'image sur le serveur :
+
+```bash
+scripts/build_lightdash_arm64.sh 3.361.0   # environ 40 minutes
+```
+
+**Accès à l'interface Airflow de production** (tunnel SSH) :
+
+```bash
+ssh -N -L 8092:127.0.0.1:8082 <hôte du VPS>   # puis http://localhost:8092
+```
+
 ## Notebooks
 
 | Notebook | Contenu |
@@ -244,7 +305,10 @@ uv run ruff format --check .
 ## Structure du dépôt
 
 ```
-├── .github/workflows/ci.yml  # Intégration continue
+├── .github/workflows/
+│   ├── ci.yml                # Intégration continue
+│   └── cd.yml                # Déploiement continu sur le VPS
+├── docker-compose.prod.yml   # Surcharges de production
 ├── docker-compose.yml        # Stack locale (PostgreSQL, Lightdash, S3) et profil airflow
 ├── airflow/
 │   ├── Dockerfile            # Airflow 3.3.2 + Cosmos, environnement dbt/dlt isolé
@@ -259,7 +323,9 @@ uv run ruff format --check .
 │   ├── run_all.py            # Point d'entrée unique de l'ingestion
 │   └── replay_history.py     # Rejeu de l'historique (développement uniquement)
 ├── scripts/
-│   └── slack_alerts.py       # Alertes qualité en français sur Slack
+│   ├── slack_alerts.py       # Alertes qualité en français sur Slack
+│   ├── deploy.sh             # Déploiement en production
+│   └── build_lightdash_arm64.sh  # Image Lightdash pour le VPS ARM
 ├── notebooks/                # Exploration et contrôles (Jupyter)
 ├── lightdash/                # Graphiques et dashboard Lightdash (YAML)
 └── dbt_project/
@@ -287,4 +353,4 @@ uv run ruff format --check .
 - [x] Étape 6 : orchestration Airflow + Cosmos (DAG quotidien, alertes Slack en français)
 - [x] Étape 7 : couche sémantique et dashboard Lightdash (4 onglets, versionné en YAML)
 - [x] Étape 8 : intégration continue GitHub Actions (ruff, ingestion, dbt build, alerte Slack)
-- [ ] Étape 9 : déploiement sur VPS
+- [x] Étape 9 : déploiement sur VPS (HTTPS, Airflow quotidien, déploiement continu)
